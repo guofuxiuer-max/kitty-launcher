@@ -27,6 +27,27 @@ from minecraft_launcher_lib import install as mli
 from minecraft_launcher_lib import quilt as mlq
 from minecraft_launcher_lib import utils as mlu
 
+# 官方 CDN 偶尔会挂住不返回，requests 默认没有超时 → 任务永远卡在"下载中"。
+# 这里给全局兜一个读超时（流式下载时按每个 chunk 计算），避免界面假死。
+import requests as _requests  # noqa: E402
+
+_get_orig = _requests.get
+_request_orig = _requests.Session.request
+
+
+def _get_with_timeout(*args, **kwargs):
+    kwargs.setdefault("timeout", 45)
+    return _get_orig(*args, **kwargs)
+
+
+def _request_with_timeout(self, method, url, **kwargs):
+    kwargs.setdefault("timeout", 45)
+    return _request_orig(self, method, url, **kwargs)
+
+
+_requests.get = _get_with_timeout
+_requests.Session.request = _request_with_timeout
+
 def _data_root() -> Path:
     """数据目录：开发时用仓库里的 data/，打包成 app 后用系统用户目录。"""
     env = os.environ.get("KITTY_DATA")
@@ -421,10 +442,30 @@ def start_job(title: str, fn) -> dict:
     return job.view()
 
 
+
+def _verify_client_jar(version: str, job: "Job", cb: dict) -> None:
+    """下载中断会留下半截 jar，这里按版本清单里的大小校验，坏了删掉重下一次。"""
+    jf = MC_DIR / "versions" / version / f"{version}.json"
+    jar = MC_DIR / "versions" / version / f"{version}.jar"
+    try:
+        data = json.loads(jf.read_text("utf-8"))
+        expect = ((data.get("downloads") or {}).get("client") or {}).get("size")
+    except Exception:
+        return
+    if not expect or not jar.exists():
+        return
+    if jar.stat().st_size == expect:
+        return
+    job.status = "客户端 jar 校验失败，重新下载"
+    jar.unlink(missing_ok=True)
+    mli.install_minecraft_version(version, str(MC_DIR), callback=cb)
+
+
 def install_vanilla_job(version: str, instance: str = "") -> dict:
     def work(job: Job, cb):
         job.status = f"安装原版 {version}"
         mli.install_minecraft_version(version, str(MC_DIR), callback=cb)
+        _verify_client_jar(version, job, cb)
         if instance:
             update_instance(instance, versionId=version, mcVersion=version, loader="vanilla", loaderVersion="")
 
@@ -494,10 +535,31 @@ _current_proc: subprocess.Popen | None = None
 _current_instance = ""
 
 
+_XML_MSG = re.compile(r"<log4j:Message><!\[CDATA\[(.*?)\]\]></log4j:Message>", re.S)
+
+
+def clean_line(line: str) -> str:
+    """官方 log 配置输出的是 log4j XML 事件（还可能跨多行），转成人能看的一行。"""
+    m = _XML_MSG.search(line)
+    if m:
+        return m.group(1).strip()
+    if "[CDATA[" in line:
+        tail = line.split("[CDATA[", 1)[1]
+        for end in ("]]></log4j:Message>", "]]>", "]]"):
+            if end in tail:
+                tail = tail.split(end, 1)[0]
+                break
+        return tail.strip()
+    stripped = line.strip()
+    if stripped.startswith("<log4j") or stripped.startswith("</log4j") or stripped.startswith("</log4j:Message>"):
+        return ""
+    return line.rstrip("\n")
+
+
 def log(line: str) -> None:
     global _log_seq
-    line = line.rstrip("\n")
-    if not line:
+    line = clean_line(line)
+    if not line or not line.strip():
         return
     with _log_lock:
         _log_seq += 1
@@ -580,9 +642,11 @@ def launch(instance: str) -> dict:
         try:
             with open(log_file, "a", encoding="utf-8", errors="replace") as fh:
                 for line in proc.stdout:  # type: ignore[union-attr]
-                    log(line)
-                    fh.write(line)
-                    fh.flush()
+                    clean = clean_line(line)
+                    if clean.strip():
+                        log(clean)
+                        fh.write(clean.rstrip("\n") + "\n")
+                        fh.flush()
         finally:
             code = proc.wait()
             log(f"===== 游戏退出，代码 {code} =====")

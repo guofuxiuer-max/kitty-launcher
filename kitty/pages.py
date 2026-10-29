@@ -150,8 +150,11 @@ class LaunchPage(QWidget):
             card = InstanceCard(it, selected=bool(inst and it["name"] == inst["name"]))
             card.clicked.connect(self.host.select_instance)
             card.deleted.connect(self.host.delete_instance)
-            self.inst_grid.addWidget(card, i // cols, i % cols)
+            self.inst_grid.addWidget(card, i // cols, i % cols, Qt.AlignLeft | Qt.AlignTop)
         self.inst_grid.setRowStretch(len(items) // cols + 1, 1)
+        for c in range(cols):
+            self.inst_grid.setColumnStretch(c, 0)
+        self.inst_grid.setColumnStretch(cols, 1)
 
 
 class DownloadPage(QWidget):

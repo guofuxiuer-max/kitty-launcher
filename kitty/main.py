@@ -183,8 +183,11 @@ class App(QMainWindow):
     def refresh_all(self) -> None:
         self.boot_data = core.bootstrap()
         for key, page in self.pages.items():
+            fn = getattr(page, "refresh", None)
+            if not callable(fn):
+                continue
             try:
-                page.refresh(self.boot_data)
+                fn(self.boot_data)
             except Exception as exc:  # noqa: BLE001
                 core.log(f"[UI] {key} 刷新异常：{exc}")
         game = self.boot_data["game"]
@@ -317,10 +320,26 @@ def screenshot(outdir: str) -> int:
     app.setWindowIcon(app_icon())
     win = App()
     win.show()
+    # 截图时把最近一份真实日志灌进日志页，README 里看起来才像样
+    try:
+        files = sorted(core.LOGS_DIR.glob("*.log"), key=lambda p: p.stat().st_mtime)
+        if files:
+            lines = files[-1].read_text("utf-8", errors="replace").splitlines()[-120:]
+            text = "\n".join(lines)
+            win.pages["logs"].log.setPlainText(text)
+            win.pages["launch"].mini_log.setPlainText("\n".join(lines[-12:]))
+    except Exception:
+        pass
     Path(outdir).mkdir(parents=True, exist_ok=True)
     order = ["launch", "download", "mods", "settings", "logs"]
     for key in order:
         win.go(key)
+        if key == "mods":
+            try:
+                win.pages["mods"].search.setText("sodium")
+                win.pages["mods"].do_search()
+            except Exception:
+                pass
         app.processEvents()
         QTimer.singleShot(0, lambda: None)
         app.processEvents()

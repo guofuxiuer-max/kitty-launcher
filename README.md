@@ -5,6 +5,8 @@
 
 ![启动页](screenshots/launch.png)
 
+> 界面：左侧导航（启动 / 下载 / 模组 / 设置 / 日志），实例卡片式管理，紫粉渐变 + 深浅双主题。
+
 <details>
 <summary>更多截图</summary>
 
@@ -23,6 +25,18 @@
 - **模组市场**：内置 Modrinth 搜索，按当前实例的 MC 版本 + 加载器过滤，一键下载到 `mods/`
 - **实时日志**：游戏 stdout 实时进日志页，同时落盘到 `data/logs/`
 - **深浅双主题**：PCL 那套紫粉配色，一键切换
+
+## 实测（不是 PPT，一条条跑过）
+
+本机 macOS 26 / Apple M5 Pro / Java 25 实测：
+
+| 步骤 | 结果 |
+|---|---|
+| 安装原版 26.3 | 758 MB / 5149 个资源文件 / client jar 按清单大小校验通过 |
+| 启动原版 | `Setting user: Kitty` → `Backend library: LWJGL 3.4.3` → `Created window using SDL video driver: cocoa` |
+| 装 Fabric | `fabric-loader-0.20.1-26.3`，88 条 classpath 全部命中，0 缺失 |
+| 启动 Fabric | `Loading Minecraft 26.3 with Fabric Loader 0.20.1` |
+| Modrinth 装 Sodium | `sodium-fabric-0.9.3-beta.1+mc26.3.jar`，启动日志确认 `- sodium 0.9.3-beta.1+mc26.3` 已加载 |
 
 ## 快速开始
 
@@ -117,6 +131,28 @@ kitty-launcher/
 - 目前**只做离线登录**；多人正版服需要微软登录（路线图第 1 项）
 - 首次装原版要下 200–400 MB 资源，网络差会慢
 - Forge 安装依赖官方 installer，首次会比较慢
+
+## 发布到 GitHub
+
+```bash
+# 仓库已经初始化并提交过一次，直接改 remote 推上去
+git remote add origin git@github.com:<your-name>/kitty-launcher.git
+git branch -M main
+git push -u origin main
+```
+
+如果从零开始：
+
+```bash
+git init
+git add .
+git commit -m "feat: PCL 风格跨平台 Minecraft 启动器"
+git remote add origin git@github.com:<your-name>/kitty-launcher.git
+git push -u origin main
+```
+
+记得把 README 第一段的 `<your-name>` 换成自己的 GitHub 用户名；截图在 `screenshots/`，
+重新生成用 `./scripts/screenshot.sh`（无头渲染，不弹窗）。
 
 ## 许可证
 
