@@ -108,12 +108,12 @@ class App(QMainWindow):
 
         logo = QLabel()
         logo.setObjectName("Logo")
-        logo.setFixedSize(46, 46)
+        logo.setFixedSize(52, 52)
         logo.setAlignment(Qt.AlignCenter)
         logo_file = asset_path("logo.png")
         if logo_file:
             logo.setPixmap(
-                QPixmap(str(logo_file)).scaled(46, 46, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                QPixmap(str(logo_file)).scaled(52, 52, Qt.KeepAspectRatio, Qt.SmoothTransformation)
             )
         else:
             logo.setText("🐱")
