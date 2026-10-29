@@ -1,3 +1,5 @@
+<img src="assets/logo-128.png" width="96" align="right" alt="logo" />
+
 # KittyLauncher · 猫咪启动器
 
 > 一个 **PCL 风格**的 Minecraft 启动器，跨平台（macOS / Windows / Linux），Python + PySide6 写的原生桌面程序。

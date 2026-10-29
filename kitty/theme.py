@@ -51,8 +51,7 @@ QWidget#Rail {{
     border-right: 1px solid {c['line']};
 }}
 QLabel#Logo {{
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
-                stop:0 {c['accent']}, stop:1 {c['accent2']});
+    background: transparent;
     border-radius: 15px;
     font-size: 24px;
 }}
@@ -130,6 +129,11 @@ QPushButton#Ghost {{
     border-radius: 10px; padding: 8px 16px;
 }}
 QPushButton#Ghost:hover {{ border: 1px solid {c['accent']}; }}
+QPushButton#CardIcon {{
+    background: {c['panel2']}; border: 1px solid {c['line']};
+    border-radius: 8px; padding: 0; font-size: 13px;
+}}
+QPushButton#CardIcon:hover {{ border: 1px solid {c['accent']}; color: {c['accent']}; }}
 QPushButton#Tiny {{
     background: {c['panel2']}; border: 1px solid {c['line']};
     border-radius: 8px; padding: 4px 10px; font-size: 12px;

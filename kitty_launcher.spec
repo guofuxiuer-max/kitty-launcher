@@ -8,7 +8,7 @@ a = Analysis(
     ["launcher.py"],
     pathex=[],
     binaries=[],
-    datas=[],
+    datas=[("assets/logo.png", "assets")],
     hiddenimports=collect_submodules("minecraft_launcher_lib") + ["requests", "certifi"],
     hookspath=[],
     runtime_hooks=[],
@@ -47,7 +47,7 @@ coll = COLLECT(
 app = BUNDLE(
     coll,
     name="KittyLauncher.app",
-    icon=None,
+    icon="assets/logo.icns",
     bundle_identifier="io.github.kittylauncher",
     info_plist={
         "CFBundleName": "KittyLauncher",

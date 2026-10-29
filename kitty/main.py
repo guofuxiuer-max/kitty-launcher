@@ -106,10 +106,17 @@ class App(QMainWindow):
         lay.setContentsMargins(12, 16, 12, 14)
         lay.setSpacing(8)
 
-        logo = QLabel("🐱")
+        logo = QLabel()
         logo.setObjectName("Logo")
         logo.setFixedSize(46, 46)
         logo.setAlignment(Qt.AlignCenter)
+        logo_file = asset_path("logo.png")
+        if logo_file:
+            logo.setPixmap(
+                QPixmap(str(logo_file)).scaled(46, 46, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            )
+        else:
+            logo.setText("🐱")
         holder = QHBoxLayout()
         holder.addWidget(logo, 0, Qt.AlignHCenter)
         lay.addLayout(holder)
@@ -430,7 +437,23 @@ class App(QMainWindow):
                 sb.setValue(sb.maximum())
 
 
+def asset_path(name: str) -> Path | None:
+    """assets/ 里的资源，兼容源码运行和 PyInstaller 打包。"""
+    candidates = []
+    meipass = getattr(sys, "_MEIPASS", None)
+    if meipass:
+        candidates.append(Path(meipass) / "assets" / name)
+    candidates.append(ROOT / "assets" / name)
+    for c in candidates:
+        if c.exists():
+            return c
+    return None
+
+
 def app_icon() -> QIcon:
+    logo = asset_path("logo.png")
+    if logo:
+        return QIcon(str(logo))
     pm = QPixmap(256, 256)
     pm.fill(Qt.transparent)
     p = QPainter(pm)
