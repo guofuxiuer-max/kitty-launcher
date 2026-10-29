@@ -35,6 +35,14 @@ from kitty import theme  # noqa: E402
 from kitty.widgets import NavButton, Toast, elide  # noqa: E402
 
 
+def _exit_is_normal(exit_info: dict) -> bool:
+    """正常退出：退出码 0 / 我们自己点了「结束游戏」/ 被信号终止（143 = 128+15）。"""
+    if exit_info.get("userStopped"):
+        return True
+    code = exit_info.get("code")
+    return code in (0, None, -15, -2, 130, 143)
+
+
 class App(QMainWindow):
     def __init__(self, dark: bool = True):
         super().__init__()
@@ -45,6 +53,7 @@ class App(QMainWindow):
         self.log_seq = 0
         self.boot_data = core.bootstrap()
         self._last_job_state = None
+        self._last_running = None
 
         root = QWidget()
         root.setObjectName("Root")
@@ -196,9 +205,12 @@ class App(QMainWindow):
                 fn(self.boot_data)
             except Exception as exc:  # noqa: BLE001
                 core.log(f"[UI] {key} 刷新异常：{exc}")
-        game = self.boot_data["game"]
-        if game["running"]:
-            self.game_chip.setText("运行中 · " + game["instance"])
+        self._apply_game_chip(self.boot_data["game"])
+        self._last_running = self.boot_data["game"]["running"]
+
+    def _apply_game_chip(self, game: dict) -> None:
+        if game.get("running"):
+            self.game_chip.setText("运行中 · " + game.get("instance", ""))
             self.game_chip.setObjectName("ChipOn")
         else:
             self.game_chip.setText("未运行")
@@ -303,8 +315,30 @@ class App(QMainWindow):
             self.pages["download"].on_job(job)
         except Exception:  # noqa: BLE001
             pass
+        self._sync_game_state()
+
+    def _sync_game_state(self) -> None:
+        """游戏进程状态变了就把启动页整块刷一遍，否则按钮会卡在「游戏运行中」的灰态。"""
         game = core.game_status()
-        self.game_chip.setText(("运行中 · " + game["instance"]) if game["running"] else "未运行")
+        self._apply_game_chip(game)
+
+        running = bool(game.get("running"))
+        exit_info = core.consume_exit()
+        if exit_info:
+            name = exit_info.get("instance", "")
+            if _exit_is_normal(exit_info):
+                self.toast(f"游戏已退出（{name}）", "ok")
+            else:
+                self.toast(f"游戏异常退出，代码 {exit_info.get('code')}，详情看日志页", "err")
+
+        if running != self._last_running:
+            self._last_running = running
+            self.boot_data = core.bootstrap()
+            self.boot_data["game"] = game
+            try:
+                self.pages["launch"].refresh(self.boot_data)
+            except Exception as exc:  # noqa: BLE001
+                core.log(f"[UI] 启动页刷新失败：{exc}")
 
     def tick_logs(self) -> None:
         data = core.get_logs(self.log_seq)

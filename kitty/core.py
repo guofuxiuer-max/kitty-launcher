@@ -554,6 +554,8 @@ _log_seq = 0
 _log_lock = threading.Lock()
 _current_proc: subprocess.Popen | None = None
 _current_instance = ""
+_last_exit: dict = {"code": None, "instance": "", "at": 0, "seen": True, "userStopped": False}
+_stop_requested = False
 
 
 _XML_MSG = re.compile(r"<log4j:Message><!\[CDATA\[(.*?)\]\]></log4j:Message>", re.S)
@@ -669,7 +671,18 @@ def launch(instance: str) -> dict:
                         fh.write(clean.rstrip("\n") + "\n")
                         fh.flush()
         finally:
+            global _stop_requested
             code = proc.wait()
+            _last_exit.update(
+                {
+                    "code": code,
+                    "instance": inst["name"],
+                    "at": int(time.time()),
+                    "seen": False,
+                    "userStopped": _stop_requested,
+                }
+            )
+            _stop_requested = False
             log(f"===== 游戏退出，代码 {code} =====")
 
     threading.Thread(target=pump, name="log-pump", daemon=True).start()
@@ -677,9 +690,10 @@ def launch(instance: str) -> dict:
 
 
 def stop_game() -> dict:
-    global _current_proc
+    global _current_proc, _stop_requested
     if not _current_proc or _current_proc.poll() is not None:
         return {"error": "没有在跑的游戏"}
+    _stop_requested = True
     _current_proc.terminate()
     try:
         _current_proc.wait(timeout=10)
@@ -694,7 +708,16 @@ def game_status() -> dict:
         "running": running,
         "instance": _current_instance if running else "",
         "pid": _current_proc.pid if running and _current_proc else 0,
+        "lastExit": dict(_last_exit),
     }
+
+
+def consume_exit() -> dict | None:
+    """UI 取一次退出信息，取完标记已读，避免每轮都弹提示。"""
+    if _last_exit.get("seen"):
+        return None
+    _last_exit["seen"] = True
+    return dict(_last_exit)
 
 
 # ---------------------------------------------------------------- Modrinth
