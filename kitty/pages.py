@@ -521,39 +521,9 @@ class SettingsPage(QWidget):
 
         card = Card()
         card.setMaximumWidth(520)
-        t = QLabel("账号与启动")
+        t = QLabel("启动与 Java")
         t.setObjectName("Section")
         card.body.addWidget(t)
-
-        card.body.addWidget(self._label("账号"))
-        self.account_view = QLabel("离线")
-        self.account_view.setWordWrap(True)
-        card.body.addWidget(self.account_view)
-        acc_row = QHBoxLayout()
-        self.ms_login_btn = QPushButton("微软登录…")
-        self.ms_login_btn.setObjectName("Primary")
-        self.ms_login_btn.setCursor(Qt.PointingHandCursor)
-        self.ms_login_btn.clicked.connect(host.open_microsoft_login)
-        self.ms_refresh_btn = QPushButton("刷新")
-        self.ms_refresh_btn.setObjectName("Ghost")
-        self.ms_refresh_btn.clicked.connect(host.refresh_microsoft)
-        self.skin_btn = QPushButton("皮肤预览…")
-        self.skin_btn.setObjectName("Ghost")
-        self.skin_btn.setCursor(Qt.PointingHandCursor)
-        self.skin_btn.clicked.connect(host.open_skin_preview)
-        self.ms_logout_btn = QPushButton("退出登录")
-        self.ms_logout_btn.setObjectName("Ghost")
-        self.ms_logout_btn.clicked.connect(host.logout_microsoft)
-        acc_row.addWidget(self.ms_login_btn)
-        acc_row.addWidget(self.ms_refresh_btn)
-        acc_row.addWidget(self.skin_btn)
-        acc_row.addWidget(self.ms_logout_btn)
-        acc_row.addStretch(1)
-        card.body.addLayout(acc_row)
-
-        card.body.addWidget(self._label("离线玩家名（没登录正版时用这个名字）"))
-        self.user = QLineEdit()
-        card.body.addWidget(self.user)
 
         card.body.addWidget(self._label("Java 运行时"))
         self.java = QComboBox()
@@ -712,35 +682,11 @@ class SettingsPage(QWidget):
         else:
             self.java_hint.setText("")
 
-        # 账号状态
-        try:
-            from . import auth
-
-            st = auth.status()
-        except Exception:
-            st = {"loggedIn": False}
-        if st.get("loggedIn"):
-            hours = st.get("expiresIn", 0) / 3600
-            self.account_view.setText(
-                f"微软正版：<b>{st['name']}</b>  ·  token 剩余 {hours:.1f} 小时  ·  UUID {st['uuid'][:8]}…"
-            )
-            self.account_view.setStyleSheet("color:#6ee7b7;")
-            self.ms_login_btn.setText("切换账号…")
-            self.ms_refresh_btn.setEnabled(True)
-            self.ms_logout_btn.setEnabled(True)
-        else:
-            self.account_view.setText("离线（只能进离线服；正版服需要微软登录）")
-            self.account_view.setStyleSheet("color:#9498ac;")
-            self.ms_login_btn.setText("微软登录…")
-            self.ms_refresh_btn.setEnabled(False)
-            self.ms_logout_btn.setEnabled(False)
-
         if hasattr(self, "env_view"):
             self.env_view.setPlainText(env_report.render())
 
     def save(self) -> None:
         core.save_config({
-            "username": self.user.text().strip() or "Steve",
             "javaPath": self.java.currentData() or "",
             "memoryMB": self.mem.value(),
             "width": self.w.value(),
@@ -801,6 +747,263 @@ class LogsPage(QWidget):
         lay.addWidget(self.log, 1)
 
 
+
+class UsersPage(QWidget):
+    """用户页：微软账号 + 3D 皮肤预览，账号相关的东西全在这一页。"""
+
+    def __init__(self, host):
+        super().__init__()
+        self.host = host
+        self._skin_key = None
+
+        inner = QWidget()
+        outer = QVBoxLayout(inner)
+        outer.setContentsMargins(26, 22, 26, 24)
+        outer.setSpacing(14)
+        root = QVBoxLayout(self)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.addWidget(_scroll(inner))
+
+        # ---------------- 账号卡
+        top = QHBoxLayout()
+        top.setSpacing(16)
+
+        acc = Card()
+        acc.setMaximumWidth(560)
+        t = QLabel("微软账号")
+        t.setObjectName("Section")
+        acc.body.addWidget(t)
+
+        self.account_view = QLabel("离线")
+        self.account_view.setWordWrap(True)
+        self.account_view.setStyleSheet("font-size:14px;")
+        acc.body.addWidget(self.account_view)
+
+        self.uuid_view = QLabel("")
+        self.uuid_view.setObjectName("Hint")
+        self.uuid_view.setWordWrap(True)
+        acc.body.addWidget(self.uuid_view)
+
+        row = QHBoxLayout()
+        self.login_btn = QPushButton("微软登录…")
+        self.login_btn.setObjectName("Primary")
+        self.login_btn.setCursor(Qt.PointingHandCursor)
+        self.login_btn.clicked.connect(host.open_microsoft_login)
+        self.refresh_btn = QPushButton("刷新 token")
+        self.refresh_btn.setObjectName("Ghost")
+        self.refresh_btn.clicked.connect(host.refresh_microsoft)
+        self.logout_btn = QPushButton("退出登录")
+        self.logout_btn.setObjectName("Ghost")
+        self.logout_btn.clicked.connect(host.logout_microsoft)
+        row.addWidget(self.login_btn)
+        row.addWidget(self.refresh_btn)
+        row.addWidget(self.logout_btn)
+        row.addStretch(1)
+        acc.body.addLayout(row)
+
+        acc.body.addWidget(self._label("离线玩家名（没登录正版时用这个名字）"))
+        name_row = QHBoxLayout()
+        self.offline_name = QLineEdit()
+        self.offline_name.setPlaceholderText("Steve")
+        self.offline_name.returnPressed.connect(self.save_offline_name)
+        save_name = QPushButton("保存")
+        save_name.setObjectName("Ghost")
+        save_name.clicked.connect(self.save_offline_name)
+        name_row.addWidget(self.offline_name, 1)
+        name_row.addWidget(save_name)
+        acc.body.addLayout(name_row)
+        top.addWidget(acc, 0, Qt.AlignTop)
+
+        tip = Card()
+        tip.setMaximumWidth(380)
+        t2 = QLabel("说明")
+        t2.setObjectName("Section")
+        tip.body.addWidget(t2)
+        note = QLabel(
+            "· 登录后才能进正版服，启动命令里的用户名/UUID/token 会换成真实身份\n"
+            "· token 存在 data/accounts.json，权限 600，只有你自己能读\n"
+            "· Minecraft token 约 24 小时过期，启动前会自动续期\n"
+            "· 退出登录只删本地记录，不影响微软账号"
+        )
+        note.setObjectName("Hint")
+        note.setWordWrap(True)
+        tip.body.addWidget(note)
+        tip.body.addStretch(1)
+        top.addWidget(tip, 0, Qt.AlignTop)
+        top.addStretch(1)
+        outer.addLayout(top)
+
+        # ---------------- 皮肤卡
+        skin_card = Card()
+        skin_row = QHBoxLayout()
+        skin_row.setSpacing(20)
+
+        from .skin3d import Skin3DView
+
+        self.view3d = Skin3DView()
+        self.view3d.setFixedSize(230, 320)
+        self.view3d.setStyleSheet(
+            "background: qlineargradient(x1:0,y1:0,x2:0,y2:1,"
+            "stop:0 rgba(168,85,247,0.16), stop:1 rgba(0,0,0,0.25));"
+            "border: 1px solid #2b3040; border-radius: 16px;"
+        )
+        view_col = QVBoxLayout()
+        view_col.setSpacing(6)
+        view_col.addWidget(self.view3d, 0, Qt.AlignTop)
+        view_hint = QLabel("拖动旋转 · 滚轮缩放 · 双击暂停自转")
+        view_hint.setObjectName("Hint")
+        view_hint.setAlignment(Qt.AlignCenter)
+        view_hint.setFixedWidth(230)
+        view_col.addWidget(view_hint)
+        skin_row.addLayout(view_col)
+
+        info = QVBoxLayout()
+        info.setSpacing(10)
+
+        head_row = QHBoxLayout()
+        self.head_label = QLabel("")
+        self.head_label.setFixedSize(96, 96)
+        self.head_label.setAlignment(Qt.AlignCenter)
+        self.head_label.setStyleSheet("border-radius: 14px; background: rgba(255,255,255,0.04);")
+        head_row.addWidget(self.head_label)
+
+        name_col = QVBoxLayout()
+        self.skin_name = QLabel("—")
+        self.skin_name.setStyleSheet("font-size:19px; font-weight:600;")
+        self.skin_sub = QLabel("")
+        self.skin_sub.setObjectName("Hint")
+        self.skin_sub.setWordWrap(True)
+        name_col.addWidget(self.skin_name)
+        name_col.addWidget(self.skin_sub)
+        name_col.addStretch(1)
+        head_row.addLayout(name_col, 1)
+        info.addLayout(head_row)
+
+        self.skin_source = QLabel("")
+        self.skin_source.setObjectName("Hint")
+        self.skin_source.setWordWrap(True)
+        info.addWidget(self.skin_source)
+
+        self.skin_path = QLabel("")
+        self.skin_path.setObjectName("Hint")
+        self.skin_path.setWordWrap(True)
+        info.addWidget(self.skin_path)
+
+        info.addWidget(self._label("想看别人？输入正版玩家名预览"))
+        look_row = QHBoxLayout()
+        self.look_name = QLineEdit()
+        self.look_name.setPlaceholderText("例如 Notch / jeb_ / Dream")
+        self.look_name.returnPressed.connect(lambda: self.load_skin(self.look_name.text().strip()))
+        look = QPushButton("预览")
+        look.setObjectName("Primary")
+        look.clicked.connect(lambda: self.load_skin(self.look_name.text().strip()))
+        look_row.addWidget(self.look_name, 1)
+        look_row.addWidget(look)
+        info.addLayout(look_row)
+
+        info.addStretch(1)
+        btn_row = QHBoxLayout()
+        self.spin_btn = QPushButton("暂停自转")
+        self.spin_btn.setObjectName("Tiny")
+        self.spin_btn.clicked.connect(self.toggle_spin)
+        reset_btn = QPushButton("重置视角")
+        reset_btn.setObjectName("Tiny")
+        reset_btn.clicked.connect(lambda: self.view3d.reset_view())
+        big_btn = QPushButton("独立窗口")
+        big_btn.setObjectName("Tiny")
+        big_btn.clicked.connect(host.open_skin_preview)
+        open_btn = QPushButton("打开皮肤文件")
+        open_btn.setObjectName("Tiny")
+        open_btn.clicked.connect(self.open_skin_file)
+        btn_row.addWidget(self.spin_btn)
+        btn_row.addWidget(reset_btn)
+        btn_row.addWidget(big_btn)
+        btn_row.addWidget(open_btn)
+        btn_row.addStretch(1)
+        info.addLayout(btn_row)
+
+        skin_row.addLayout(info, 1)
+        skin_card.body.addLayout(skin_row)
+        outer.addWidget(skin_card)
+        outer.addStretch(1)
+
+        self._info = {}
+
+    @staticmethod
+    def _label(text: str) -> QLabel:
+        lab = QLabel(text)
+        lab.setObjectName("Hint")
+        return lab
+
+    # ---------------- 行为
+    def toggle_spin(self) -> None:
+        running = self.view3d.toggle_auto()
+        self.spin_btn.setText("暂停自转" if running else "继续自转")
+
+    def save_offline_name(self) -> None:
+        name = self.offline_name.text().strip() or "Steve"
+        core.save_config({"username": name})
+        self.host.toast(f"离线名字已保存：{name}", "ok")
+        self._skin_key = None
+        self.load_skin()
+
+    def open_skin_file(self) -> None:
+        import subprocess
+
+        path = self._info.get("path")
+        if path:
+            subprocess.Popen(["open", "-R", str(path)])
+
+    def load_skin(self, who: str = "") -> None:
+        from . import skin
+
+        info = skin.resolve(who)
+        self._info = info
+        self.view3d.set_skin(info["path"], slim=(info.get("model") == "slim"))
+        head = skin.head(info["path"], 88)
+        if not head.isNull():
+            self.head_label.setPixmap(head)
+        self.skin_name.setText(info.get("name") or "—")
+        self.skin_sub.setText(("UUID " + info["uuid"]) if info.get("uuid") else "无 uuid（离线名）")
+        model = "经典（4px 手臂）" if info.get("model") != "slim" else "纤细（3px 手臂）"
+        self.skin_source.setText(f"来源：{info.get('source', '')} · {model}"
+                                 + (f"\n{info['error']}" if info.get("error") else ""))
+        self.skin_path.setText(f"文件：{info['path']}")
+
+    def refresh(self, boot: dict) -> None:
+        from . import auth
+
+        try:
+            st = auth.status()
+        except Exception:
+            st = {"loggedIn": False}
+
+        self.offline_name.setText(boot["config"].get("username", "") or "")
+
+        if st.get("loggedIn"):
+            hours = st.get("expiresIn", 0) / 3600
+            self.account_view.setText(f"✅ 已登录微软正版：<b>{st['name']}</b>")
+            self.account_view.setStyleSheet("color:#6ee7b7; font-size:14px;")
+            self.uuid_view.setText(f"UUID {st['uuid']} · token 剩余 {hours:.1f} 小时")
+            self.login_btn.setText("切换账号…")
+            self.refresh_btn.setEnabled(True)
+            self.logout_btn.setEnabled(True)
+        else:
+            self.account_view.setText("离线模式（能玩单人和离线服；正版服需要登录）")
+            self.account_view.setStyleSheet("color:#9498ac; font-size:14px;")
+            self.uuid_view.setText("")
+            self.login_btn.setText("微软登录…")
+            self.refresh_btn.setEnabled(False)
+            self.logout_btn.setEnabled(False)
+
+        key = st.get("uuid") or ("offline:" + (boot["config"].get("username") or ""))
+        if key != self._skin_key:
+            self._skin_key = key
+            try:
+                self.load_skin()
+            except Exception as exc:  # noqa: BLE001
+                core.log(f"[UI] 皮肤加载失败：{exc}")
+
 def build_pages(host) -> dict[str, QWidget]:
     return {
         "launch": LaunchPage(host),
@@ -808,4 +1011,5 @@ def build_pages(host) -> dict[str, QWidget]:
         "mods": ModsPage(host),
         "settings": SettingsPage(host),
         "logs": LogsPage(host),
+        "users": UsersPage(host),
     }

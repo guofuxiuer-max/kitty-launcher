@@ -77,7 +77,7 @@ class App(QMainWindow):
 
         self.stack = QStackedWidget()
         self.pages = pages_mod.build_pages(self)
-        for key in ("launch", "download", "mods", "settings", "logs"):
+        for key in ("launch", "download", "mods", "settings", "logs", "users"):
             self.stack.addWidget(self.pages[key])
         right.addWidget(self.stack, 1)
         lay.addLayout(right, 1)
@@ -120,6 +120,7 @@ class App(QMainWindow):
             ("mods", "🧩", "模组"),
             ("settings", "⚙️", "设置"),
             ("logs", "📜", "日志"),
+            ("users", "👤", "用户"),
         )):
             btn = NavButton(icon, text)
             btn.setProperty("page", key)
@@ -192,7 +193,7 @@ class App(QMainWindow):
         self.apply_theme(not self.dark)
 
     def go(self, key: str) -> None:
-        order = ["launch", "download", "settings", "logs", "mods"]
+        order = ["launch", "download", "settings", "logs", "users", "mods"]
         if key in order:
             self.stack.setCurrentIndex(order.index(key))
             btn = getattr(self, "nav_buttons", {}).get(key)
@@ -461,7 +462,7 @@ def screenshot(outdir: str) -> int:
     except Exception:
         pass
     Path(outdir).mkdir(parents=True, exist_ok=True)
-    order = ["launch", "download", "settings", "logs", "mods"]
+    order = ["launch", "download", "settings", "logs", "users", "mods"]
     for key in order:
         win.go(key)
         # 明确切栈 + 强制重绘，否则 offscreen 下可能抓到上一页的缓存
