@@ -32,6 +32,7 @@ from kitty import core  # noqa: E402
 from kitty import env_report  # noqa: E402
 from kitty import pages as pages_mod  # noqa: E402
 from kitty import theme  # noqa: E402
+from kitty.dialogs import DiagnosisDialog, InstanceSettingsDialog  # noqa: E402
 from kitty.widgets import NavButton, Toast, elide  # noqa: E402
 
 
@@ -172,7 +173,12 @@ class App(QMainWindow):
     def apply_theme(self, dark: bool) -> None:
         self.dark = dark
         self.colors = theme.DARK if dark else theme.LIGHT
-        self.setStyleSheet(theme.qss(self.colors))
+        sheet = theme.qss(self.colors)
+        self.setStyleSheet(sheet)
+        # 对话框是独立顶层窗，必须走 QApplication 级别才会继承样式
+        app = QApplication.instance()
+        if app is not None:
+            app.setStyleSheet(sheet)
         self.theme_btn.setText("◐")
 
     def toggle_theme(self) -> None:
@@ -255,6 +261,29 @@ class App(QMainWindow):
         self.refresh_all()
         self.go("launch")
         return job
+
+    def open_instance_settings(self, name: str) -> None:
+        if not core.get_instance(name):
+            return
+        InstanceSettingsDialog(self, name).exec()
+
+    def diagnose(self, name: str = "") -> None:
+        inst = core.get_instance(name) if name else self.selected_instance()
+        if not inst:
+            self.toast("先建一个实例喵", "err")
+            return
+        DiagnosisDialog(self, inst["name"]).exec()
+
+    def import_modpack(self, path: str) -> None:
+        if not path:
+            return
+        job = core.import_modpack_job(path)
+        if isinstance(job, dict) and job.get("error"):
+            self.toast(job["error"], "err")
+            return
+        self.toast("开始导入整合包…", "ok")
+        self.refresh_all()
+        self.go("launch")
 
     def install_loader_for(self, name: str) -> None:
         inst = core.get_instance(name)

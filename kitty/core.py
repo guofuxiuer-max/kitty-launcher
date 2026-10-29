@@ -48,6 +48,24 @@ def _request_with_timeout(self, method, url, **kwargs):
 _requests.get = _get_with_timeout
 _requests.Session.request = _request_with_timeout
 
+
+def _install_mirror_hook() -> None:
+    """在 timeout 补丁之上再加一层 URL 改写，切换镜像不需要重启进程。"""
+    cur_get = _requests.get
+    cur_req = _requests.Session.request
+
+    def get(url, *a, **kw):
+        return cur_get(_rewrite_url(url) if isinstance(url, str) else url, *a, **kw)
+
+    def request(self, method, url, *a, **kw):
+        return cur_req(self, method, _rewrite_url(url) if isinstance(url, str) else url, *a, **kw)
+
+    _requests.get = get
+    _requests.Session.request = request
+
+
+_install_mirror_hook()
+
 def _data_root() -> Path:
     """数据目录：开发时用仓库里的 data/，打包成 app 后用系统用户目录。"""
     env = os.environ.get("KITTY_DATA")
@@ -74,6 +92,8 @@ INSTANCES_JSON = DATA / "instances.json"
 for d in (DATA, MC_DIR, INSTANCES_DIR, LOGS_DIR):
     d.mkdir(parents=True, exist_ok=True)
 
+
+
 DEFAULT_CONFIG = {
     "username": "Steve",
     "memoryMB": 4096,
@@ -82,6 +102,18 @@ DEFAULT_CONFIG = {
     "height": 720,
     "selectedInstance": "",
     "theme": "dark",
+    "jvmArgs": "",          # 全局追加 JVM 参数，例：-XX:+UseG1GC
+    "mirror": "official",   # official | bmclapi
+}
+
+# 实例级覆盖，0 / 空串 表示"跟随全局"（PCL 的版本设置就是这么做的）
+INSTANCE_SETTING_DEFAULTS = {
+    "memoryMB": 0,
+    "width": 0,
+    "height": 0,
+    "javaPath": "",
+    "jvmArgs": "",
+    "gameArgs": "",
 }
 
 # ---------------------------------------------------------------- 配置文件
@@ -110,7 +142,48 @@ def save_config(patch: dict) -> dict:
             if k in DEFAULT_CONFIG:
                 cfg[k] = v
         CONFIG_PATH.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), "utf-8")
-        return cfg
+    if "mirror" in (patch or {}):
+        set_mirror(cfg.get("mirror", "official"))
+    return cfg
+
+
+# ---------------------------------------------------------------- 下载镜像
+
+_MIRROR_MAP = {
+    "bmclapi": {
+        "https://launchermeta.mojang.com": "https://bmclapi2.bangbang93.com",
+        "https://piston-meta.mojang.com": "https://bmclapi2.bangbang93.com",
+        "https://piston-data.mojang.com": "https://bmclapi2.bangbang93.com",
+        "https://libraries.minecraft.net": "https://bmclapi2.bangbang93.com/maven",
+        "https://resources.download.minecraft.net": "https://bmclapi2.bangbang93.com/assets",
+        "https://maven.minecraftforge.net": "https://bmclapi2.bangbang93.com/maven",
+        "https://maven.fabricmc.net": "https://bmclapi2.bangbang93.com/maven",
+        "https://maven.neoforged.net": "https://bmclapi2.bangbang93.com/maven",
+        "https://meta.fabricmc.net": "https://bmclapi2.bangbang93.com/fabric-meta",
+    }
+}
+
+_active_mirror = "official"
+
+
+def _rewrite_url(url: str) -> str:
+    table = _MIRROR_MAP.get(_active_mirror) or {}
+    for src, dst in table.items():
+        if url.startswith(src):
+            return dst + url[len(src):]
+    return url
+
+
+def set_mirror(name: str) -> str:
+    """切换下载源。官方 CDN 在国内经常抽风，BMCLAPI 是国内镜像（不是盗版源，只是缓存）。"""
+    global _active_mirror
+    name = (name or "official").lower()
+    _active_mirror = name if name in _MIRROR_MAP else "official"
+    return _active_mirror
+
+
+def current_mirror() -> str:
+    return _active_mirror
 
 
 # ---------------------------------------------------------------- Java 探测
@@ -274,6 +347,34 @@ def get_instance(name: str) -> dict | None:
         if inst["name"] == name:
             return inst
     return None
+
+
+def instance_settings(inst: dict) -> dict:
+    """合并「实例设置」与「全局设置」，0 / 空串 视为跟随全局。"""
+    cfg = load_config()
+    raw = inst.get("settings") or {}
+    merged = {}
+    merged["memoryMB"] = int(raw.get("memoryMB") or 0) or int(cfg.get("memoryMB") or 4096)
+    merged["width"] = int(raw.get("width") or 0) or int(cfg.get("width") or 1280)
+    merged["height"] = int(raw.get("height") or 0) or int(cfg.get("height") or 720)
+    merged["javaPath"] = raw.get("javaPath") or cfg.get("javaPath") or ""
+    merged["jvmArgs"] = " ".join(
+        x for x in (str(cfg.get("jvmArgs") or "").strip(), str(raw.get("jvmArgs") or "").strip()) if x
+    )
+    merged["gameArgs"] = str(raw.get("gameArgs") or "").strip()
+    merged["raw"] = dict(raw)
+    return merged
+
+
+def update_instance_settings(name: str, patch: dict) -> dict | None:
+    inst = get_instance(name)
+    if not inst:
+        return None
+    raw = dict(inst.get("settings") or {})
+    for k in INSTANCE_SETTING_DEFAULTS:
+        if k in patch:
+            raw[k] = patch[k]
+    return update_instance(name, settings=raw)
 
 
 def instance_dir(name: str) -> Path:
@@ -603,27 +704,37 @@ def build_command(inst: dict) -> dict:
     cfg = load_config()
     username = (cfg.get("username") or "Steve").strip() or "Steve"
     need = version_java_major(inst["versionId"])
-    java, jinfo = pick_java(need)
+    eff = instance_settings(inst)
+    java, jinfo = (None, None)
+    if eff["javaPath"]:
+        info = java_info(eff["javaPath"])
+        if info:
+            java, jinfo = info["path"], info
+    if not java:
+        java, jinfo = pick_java(need)
     if not java:
         raise RuntimeError("没找到可用的 Java，去设置页指一个 java 可执行文件")
-    mem = int(cfg.get("memoryMB") or 4096)
+    mem = eff["memoryMB"]
+    extra_jvm = eff["jvmArgs"].split() if eff["jvmArgs"] else []
     opts = {
         "username": username,
         "uuid": offline_uuid(username),
         "token": "0",
         "executablePath": java,
         "defaultExecutablePath": java,
-        "jvmArguments": [f"-Xmx{mem}M", "-Xms512M", "-Dfile.encoding=UTF-8"],
+        "jvmArguments": [f"-Xmx{mem}M", "-Xms512M", "-Dfile.encoding=UTF-8", *extra_jvm],
         "launcherName": "KittyLauncher",
         "launcherVersion": "1.0.0",
         "gameDirectory": str(instance_dir(inst["name"])),
         "customResolution": True,
-        "resolutionWidth": str(cfg.get("width") or 1280),
-        "resolutionHeight": str(cfg.get("height") or 720),
+        "resolutionWidth": str(eff["width"]),
+        "resolutionHeight": str(eff["height"]),
         "enableLoggingConfig": True,
     }
     cmd = mlc.get_minecraft_command(inst["versionId"], str(MC_DIR), opts)
-    return {"cmd": cmd, "java": jinfo, "requiredMajor": need}
+    if eff["gameArgs"]:
+        cmd.extend(eff["gameArgs"].split())
+    return {"cmd": cmd, "java": jinfo, "requiredMajor": need, "settings": eff}
 
 
 def launch(instance: str) -> dict:
@@ -856,3 +967,261 @@ def open_path(path: str) -> dict:
         return {"error": "目录不存在"}
     subprocess.Popen(["open", path])
     return {"ok": True, "path": path}
+
+
+# ---------------------------------------------------------------- 整合包 / 实例交换
+
+from minecraft_launcher_lib import mrpack as _mrpack  # noqa: E402
+
+
+def modpack_info(path: str) -> dict:
+    p = Path(path).expanduser()
+    if not p.exists():
+        return {"error": "文件不存在"}
+    if p.suffix.lower() not in (".mrpack", ".zip"):
+        return {"error": "只支持 .mrpack（Modrinth 整合包）和 .zip（带 modrinth.index.json 的包）"}
+    try:
+        info = _mrpack.get_mrpack_information(str(p))
+        return {
+            "name": info.get("name", p.stem),
+            "summary": info.get("summary", ""),
+            "version": info.get("versionId", ""),
+            "mcVersion": info.get("minecraftVersion", ""),
+            "optionalFiles": info.get("optionalFiles", []),
+        }
+    except Exception as exc:  # noqa: BLE001
+        return {"error": f"解析整合包失败：{exc}"}
+
+
+def import_modpack_job(path: str, name: str = "") -> dict:
+    """把 .mrpack 装进一个新实例（mods/config 进实例目录，游戏库进公共目录）。"""
+    info = modpack_info(path)
+    if info.get("error"):
+        return {"error": info["error"]}
+
+    def work(job: Job, cb):
+        src = str(Path(path).expanduser())
+        mc = info["mcVersion"]
+        inst = create_instance(name or info["name"] or Path(src).stem, mc)
+        job.status = f"下载整合包文件 · {info['name']}"
+        _mrpack.install_mrpack(src, str(MC_DIR), str(instance_dir(inst["name"])), callback=cb)
+        vid = _mrpack.get_mrpack_launch_version(src)
+        loader = (
+            "fabric" if vid.startswith("fabric-loader")
+            else "quilt" if vid.startswith("quilt-loader")
+            else "neoforge" if "neoforge" in vid
+            else "forge" if "forge" in vid
+            else "vanilla"
+        )
+        update_instance(
+            inst["name"],
+            versionId=vid,
+            mcVersion=mc,
+            loader=loader,
+            modpack={"name": info["name"], "version": info["version"], "enabled": True},
+        )
+        job.status = "整合包安装完成"
+
+    return start_job(f"导入整合包 · {info['name']}", work)
+
+
+_EXPORT_SKIP = ("logs", "crash-reports", "downloads", ".cache")
+
+
+def export_instance(name: str, dest: str) -> dict:
+    """把实例打成 zip（不含日志/崩溃报告），方便分享给朋友。"""
+    import zipfile
+
+    inst = get_instance(name)
+    if not inst:
+        return {"error": "实例不存在"}
+    src = instance_dir(name)
+    dest_path = Path(dest).expanduser()
+    manifest = {
+        "kittyVersion": 1,
+        "name": inst["name"],
+        "mcVersion": inst.get("mcVersion", ""),
+        "versionId": inst.get("versionId", ""),
+        "loader": inst.get("loader", "vanilla"),
+        "loaderVersion": inst.get("loaderVersion", ""),
+        "settings": inst.get("settings", {}),
+    }
+    try:
+        with zipfile.ZipFile(dest_path, "w", zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr("kitty-instance.json", json.dumps(manifest, ensure_ascii=False, indent=2))
+            for f in src.rglob("*"):
+                if not f.is_file():
+                    continue
+                rel = f.relative_to(src)
+                if rel.parts and rel.parts[0] in _EXPORT_SKIP:
+                    continue
+                zf.write(f, str(Path("instance") / rel))
+    except Exception as exc:  # noqa: BLE001
+        return {"error": f"导出失败：{exc}"}
+    return {"ok": True, "path": str(dest_path), "size": dest_path.stat().st_size}
+
+
+def import_instance_zip(path: str, name: str = "") -> dict:
+    """导入 export_instance 生成的 zip，变成一个普通实例。"""
+    import zipfile
+
+    src = Path(path).expanduser()
+    if not src.exists():
+        return {"error": "文件不存在"}
+    try:
+        with zipfile.ZipFile(src) as zf:
+            manifest = json.loads(zf.read("kitty-instance.json")) if "kitty-instance.json" in zf.namelist() else {}
+            target_name = name or manifest.get("name") or src.stem
+            inst = create_instance(target_name, manifest.get("mcVersion") or "未知")
+            base = instance_dir(inst["name"])
+            for info in zf.infolist():
+                if info.is_dir() or not info.filename.startswith("instance/"):
+                    continue
+                rel = info.filename[len("instance/"):]
+                out = (base / rel).resolve()
+                if base.resolve() not in out.parents:
+                    continue
+                out.parent.mkdir(parents=True, exist_ok=True)
+                with zf.open(info) as fh, open(out, "wb") as w:
+                    w.write(fh.read())
+    except Exception as exc:  # noqa: BLE001
+        return {"error": f"导入失败：{exc}"}
+
+    update_instance(
+        inst["name"],
+        versionId=manifest.get("versionId") or inst["mcVersion"],
+        loader=manifest.get("loader", "vanilla"),
+        loaderVersion=manifest.get("loaderVersion", ""),
+        settings=manifest.get("settings", {}),
+    )
+    return {"ok": True, "instance": core_view(inst["name"])}
+
+
+def core_view(name: str) -> dict | None:
+    inst = get_instance(name)
+    return instance_view(inst) if inst else None
+
+
+# ---------------------------------------------------------------- 日志诊断
+
+CRASH_RULES: list[tuple[str, str, str, str, str]] = [
+    (r"java\.lang\.OutOfMemoryError|Java heap space|GC overhead limit exceeded",
+     "err", "内存不够",
+     "游戏申请的内存超过了 -Xmx，常见于加了很多模组或开了高视距。",
+     "把该实例的内存上限调到 4096~8192 MB；光影 + 大型整合包建议 8G 起。"),
+    (r"UnsupportedClassVersionError|class file version|compiled by a more recent version",
+     "err", "Java 版本不对",
+     "游戏/模组是用更高版本的 Java 编译的，当前 Java 太老。",
+     "在设置里换成更高版本的 Java（1.20.5+ 需要 21，26.x 需要 25）。"),
+    (r"NoClassDefFoundError|NoSuchMethodError|NoSuchFieldError",
+     "err", "模组与游戏版本不匹配",
+     "某个模组是针对别的 MC 版本编译的，类/方法对不上。",
+     "把报错里提到的那个模组换成与当前游戏版本一致的版本。"),
+    (r"Mixin apply failed|InjectionError|mixin.*failed|MixinTransformerError",
+     "err", "Mixin 注入失败（模组冲突）",
+     "两个模组改了同一段游戏逻辑，或者某个模组版本不对。",
+     "按日志里出现的模组名，逐个禁用后二分排查；优先更新 Fabric API。"),
+    (r"ModResolutionException|Missing or unsupported mandatory dependencies|requires .* which is missing",
+     "err", "缺少前置模组",
+     "装了这个模组，但没装它依赖的前置（常见：Fabric API、Architectury、Cloth Config）。",
+     "按日志里 missing 的 mod id 去 Modrinth 搜同名模组装上。"),
+    (r"Duplicate mods|duplicate mod|two files with the same mod id",
+     "err", "模组重复",
+     "mods 目录里同一个模组存在两份（常见于手动拖入 + 整合包更新）。",
+     "删掉旧的那份，只留一个版本。"),
+    (r"Pixel format not accelerated|GLFW error 65542|Failed to create window|Could not initialize GLFW",
+     "err", "显卡/图形接口问题",
+     "OpenGL 初始化失败，通常是驱动太旧、远程桌面、或虚拟机没有 GPU 加速。",
+     "更新显卡驱动；虚拟机里请开启 3D 加速；Mac 上换用原版启动（不要远程桌面跑游戏）。"),
+    (r"UnknownHostException|Connection refused|Connection reset|timed out|Failed to download",
+     "warn", "网络问题",
+     "下载或登录时连不上服务器（国内直连 Mojang 常见）。",
+     "设置页把「下载源」切到 BMCLAPI 镜像后重试。"),
+    (r"Address already in use",
+     "err", "端口被占用",
+     "要用的端口已经被别的程序占着（多见于开服，不是客户端）。",
+     "换端口，或先关掉占用该端口的程序。"),
+    (r"Could not find or load main class|Error: Could not find or load",
+     "err", "版本文件损坏",
+     "versions 目录里的 jar / json 不完整，通常是下载中断留下的半截文件。",
+     "删掉该版本目录，重新安装一次（启动器会自动校验 jar 大小）。"),
+    (r"AccessDeniedException|Permission denied|Read-only file system",
+     "err", "文件权限问题",
+     "游戏目录没有写权限，常见于放在只读磁盘、外接 NTFS 盘、或系统保护目录。",
+     "把游戏目录换到用户目录下（设置里能看到当前路径），或用 KITTY_DATA 指定。"),
+    (r"Invalid maximum heap size|Could not reserve enough space for object heap",
+     "err", "内存参数不合法",
+     "设置的 -Xmx 超过了物理内存，或写成了非法值。",
+     "把内存上限调到不超过物理内存的 60%。"),
+    (r"EXCEPTION_ACCESS_VIOLATION|A fatal error has been detected by the Java Runtime|hs_err_pid",
+     "err", "JVM 崩溃（底层）",
+     "Java 进程被系统/驱动直接干掉了，通常是显卡驱动、内存条、或 Java 与系统不兼容。",
+     "先换一个 Java 版本试；仍然崩就更新显卡驱动；Mac 上检查是否开着「低电量模式」。"),
+    (r"Incompatible mod set|incompatible with",
+     "err", "模组集合不兼容",
+     "Fabric 在加载阶段就判定这组模组不能一起跑。",
+     "看日志里列出的冲突模组名，逐个换版本或去掉。"),
+]
+
+
+def analyze_text(text: str) -> list[dict]:
+    import re as _re
+
+    hits: list[dict] = []
+    seen: set[str] = set()
+    for pattern, level, title, detail, fix in CRASH_RULES:
+        m = _re.search(pattern, text, _re.IGNORECASE)
+        if not m or title in seen:
+            continue
+        seen.add(title)
+        line = ""
+        for raw in text.splitlines():
+            if _re.search(pattern, raw, _re.IGNORECASE):
+                line = raw.strip()[:200]
+                break
+        hits.append({"level": level, "title": title, "detail": detail, "fix": fix, "evidence": line})
+    return hits
+
+
+def diagnose_instance(name: str) -> dict:
+    inst = get_instance(name)
+    if not inst:
+        return {"error": "实例不存在"}
+    gdir = instance_dir(name)
+    log_file = gdir / "logs" / "latest.log"
+    crash_dir = gdir / "crash-reports"
+    crash_file = None
+    if crash_dir.exists():
+        files = sorted(crash_dir.glob("crash-*.txt"), key=lambda p: p.stat().st_mtime, reverse=True)
+        crash_file = files[0] if files else None
+
+    source = log_file if log_file.exists() else crash_file
+    if source is None:
+        return {"error": "这个实例还没有日志，先启动一次游戏喵"}
+
+    text = source.read_text("utf-8", errors="replace")
+    issues = analyze_text(text)
+    if crash_file and crash_file != source:
+        issues += [i for i in analyze_text(crash_file.read_text("utf-8", errors="replace")) if i["title"] not in {x["title"] for x in issues}]
+
+    header = []
+    for line in text.splitlines()[:80]:
+        if "Loading Minecraft" in line or "Backend library" in line or "Setting user" in line:
+            header.append(line.strip()[:160])
+
+    return {
+        "instance": name,
+        "file": str(source),
+        "issues": issues,
+        "header": header[:4],
+        "lines": len(text.splitlines()),
+        "logPath": str(log_file),
+        "crashPath": str(crash_file) if crash_file else "",
+    }
+
+
+# 模块加载完再把镜像设置应用上（此时 load_config / set_mirror 都已定义）
+try:
+    set_mirror(load_config().get("mirror", "official"))
+except Exception:
+    pass

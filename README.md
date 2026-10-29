@@ -14,6 +14,14 @@
 ![设置页](screenshots/settings.png)
 ![日志页](screenshots/logs.png)
 
+实例设置（PCL 的「版本设置」）：
+
+![实例设置](screenshots/dialog-instance-settings.png)
+
+日志诊断（用一份故意写坏的日志演示）：
+
+![日志诊断](screenshots/dialog-diagnosis.png)
+
 </details>
 
 ## 特性
@@ -25,6 +33,11 @@
 - **模组市场**：内置 Modrinth 搜索，按当前实例的 MC 版本 + 加载器过滤，一键下载到 `mods/`
 - **实时日志**：游戏 stdout 实时进日志页，同时落盘到 `data/logs/`
 - **环境自检**：启动时打印一行摘要，设置页有完整报告可一键复制，`./run.sh --env` 直接在终端出结果
+- **实例级设置**：每个实例单独设内存 / 窗口 / Java / JVM 参数 / 游戏参数，0 或空 = 跟随全局
+- **整合包导入**：把 `.mrpack` 拖进窗口就装成新实例（Modrinth 整合包）
+- **日志诊断**：一条命令把常见崩溃翻成中文，给原因 + 修法 + 出错行（内存不足 / Mixin 冲突 / 缺前置 / Java 版本 / 驱动…）
+- **下载源切换**：官方源 ↔ BMCLAPI 镜像，国内网络一键加速
+- **实例导出/导入**：打包成 zip 发给朋友，朋友导入即用
 - **深浅双主题**：PCL 那套紫粉配色，一键切换
 
 ## 实测（不是 PPT，一条条跑过）
@@ -38,6 +51,38 @@
 | 装 Fabric | `fabric-loader-0.20.1-26.3`，88 条 classpath 全部命中，0 缺失 |
 | 启动 Fabric | `Loading Minecraft 26.3 with Fabric Loader 0.20.1` |
 | Modrinth 装 Sodium | `sodium-fabric-0.9.3-beta.1+mc26.3.jar`，启动日志确认 `- sodium 0.9.3-beta.1+mc26.3` 已加载 |
+
+## 和 Windows 上的 PCL2 差在哪
+
+PCL2 是 Windows 专用的闭源启动器，这里按功能逐条对照（✅ 有 / ⚠️ 部分 / ❌ 暂无）：
+
+| 功能 | PCL2 | KittyLauncher |
+|---|---|---|
+| 版本隔离（每实例独立 mods/存档） | ✅ | ✅ |
+| 原版 / 快照安装 | ✅ | ✅ |
+| Fabric / Forge / Quilt | ✅ | ✅ |
+| NeoForge | ✅ | ❌ |
+| OptiFine 安装 | ✅ | ❌ |
+| Modrinth 整合包导入（.mrpack） | ✅ | ✅ |
+| CurseForge 整合包导入 | ✅ | ❌ |
+| 实例导出 / 导入 | ✅ | ✅ |
+| 离线登录 | ✅ | ✅ |
+| 微软正版登录 | ✅ | ❌（路线图第 1 项） |
+| 外置登录（authlib-injector） | ✅ | ❌ |
+| Java 自动检测 | ✅ | ✅ |
+| 自动下载 JRE | ✅ | ✅（Mojang 官方 JRE） |
+| 内存 / JVM 参数 | ✅ | ✅（全局 + 实例覆盖） |
+| 模组搜索安装 | ✅ | ✅（Modrinth） |
+| CurseForge 模组源 | ✅ | ❌ |
+| 日志 / 崩溃分析 | ✅ | ✅（内置规则库） |
+| 下载源镜像 | ✅ | ✅（BMCLAPI） |
+| 多账号档案 | ✅ | ❌ |
+| 皮肤预览 / 换肤 | ✅ | ❌ |
+| 联机（NAT 穿透） | ✅ | ❌ |
+| 多语言（中/英切换） | ✅ | ❌ |
+| 自动更新 | ✅ | ❌ |
+| macOS / Linux | ❌ | ✅ |
+| 开源 | ❌ | ✅ MIT |
 
 ## setup.sh 到底下载什么？
 
@@ -146,12 +191,24 @@ kitty-launcher/
 
 ## 路线图
 
-- [ ] 微软正版登录（OAuth 设备码流程）
-- [ ] 整合包导入（`.mrpack` / CurseForge zip）
-- [ ] 实例内存 / JVM 参数单独覆盖
-- [ ] 下载源切换（BMCLAPI 镜像加速）
-- [ ] 皮肤预览
-- [ ] Windows / Linux 上的成品包
+已完成：
+
+- [x] 实例内存 / JVM 参数 / 窗口 / Java 单独覆盖
+- [x] Modrinth 整合包导入（`.mrpack`，可拖拽）
+- [x] 日志崩溃诊断（15 条规则）
+- [x] 下载源切换（BMCLAPI）
+- [x] 实例导出 / 导入（zip）
+
+接下来（按优先级）：
+
+- [ ] 微软正版登录（设备码 OAuth + Xbox Live + Minecraft Services，底层库已具备）
+- [ ] NeoForge / OptiFine 安装
+- [ ] CurseForge 作为第二个模组源
+- [ ] 多账号档案（正版 / 离线 / 外置登录并存）
+- [ ] 皮肤预览与换肤
+- [ ] 自动更新（检查 GitHub Release）
+- [ ] 多语言（中 / 英）
+- [ ] Windows / Linux 成品包
 
 ## 命令行参数
 

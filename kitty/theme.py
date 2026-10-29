@@ -39,6 +39,9 @@ def qss(c: dict) -> str:
     outline: none;
 }}
 QWidget#Root {{ background: {c['bg']}; color: {c['text']}; }}
+QDialog {{ background: {c['bg']}; }}
+QMessageBox {{ background: {c['bg']}; }}
+QMessageBox QLabel {{ color: {c['text']}; }}
 QWidget {{ color: {c['text']}; }}
 
 /* ---------- 左侧导航 ---------- */

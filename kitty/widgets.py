@@ -78,6 +78,7 @@ class InstanceCard(QFrame):
     clicked = Signal(str)
     deleted = Signal(str)
     repair = Signal(str)
+    settings = Signal(str)
 
     def __init__(self, inst: dict, selected: bool = False, parent=None):
         super().__init__(parent)
@@ -121,6 +122,14 @@ class InstanceCard(QFrame):
             inst.get("loader") not in (None, "", "vanilla")
             and inst.get("versionId") == inst.get("mcVersion")
         )
+        self.settings_btn = QPushButton("⚙")
+        self.settings_btn.setObjectName("Tiny")
+        self.settings_btn.setFixedSize(22, 22)
+        self.settings_btn.setCursor(Qt.PointingHandCursor)
+        self.settings_btn.setToolTip("实例设置（内存 / Java / JVM 参数）")
+        self.settings_btn.clicked.connect(lambda: self.settings.emit(inst.get("name", "")))
+        top.addWidget(self.settings_btn, 0, Qt.AlignTop)
+
         self.repair_btn = QPushButton("装加载器")
         self.repair_btn.setObjectName("Tiny")
         self.repair_btn.setCursor(Qt.PointingHandCursor)

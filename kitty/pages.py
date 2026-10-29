@@ -151,6 +151,7 @@ class LaunchPage(QWidget):
             card.clicked.connect(self.host.select_instance)
             card.deleted.connect(self.host.delete_instance)
             card.repair.connect(self.host.install_loader_for)
+            card.settings.connect(self.host.open_instance_settings)
             self.inst_grid.addWidget(card, i // cols, i % cols, Qt.AlignLeft | Qt.AlignTop)
         self.inst_grid.setRowStretch(len(items) // cols + 1, 1)
         for c in range(cols):
@@ -247,7 +248,13 @@ class DownloadPage(QWidget):
         self.progress_text.setObjectName("Hint")
         panel.body.addWidget(self.progress_text)
 
-        tip = QLabel("下载走 Mojang / FabricMC / Forge 官方源。\n首次安装原版约 200–400 MB（含资源文件）。")
+        import_btn = QPushButton("导入整合包（.mrpack / .zip）")
+        import_btn.setObjectName("Ghost")
+        import_btn.setCursor(Qt.PointingHandCursor)
+        import_btn.clicked.connect(self.import_modpack)
+        panel.body.addWidget(import_btn)
+
+        tip = QLabel("下载走 Mojang / FabricMC / Forge 官方源，可在设置页切 BMCLAPI 镜像。\n首次安装原版约 200–400 MB（含资源文件）。")
         tip.setObjectName("Hint")
         tip.setWordWrap(True)
         panel.body.addWidget(tip)
@@ -256,6 +263,7 @@ class DownloadPage(QWidget):
         lay.addLayout(left, 1)
         lay.addWidget(panel, 0, Qt.AlignTop)
 
+        self.setAcceptDrops(True)
         self.search.textChanged.connect(self._on_search)
         self.list.itemClicked.connect(self._on_pick)
         self.create_btn.clicked.connect(self.create_instance)
@@ -265,6 +273,32 @@ class DownloadPage(QWidget):
         lab = QLabel(text)
         lab.setObjectName("Hint")
         return lab
+
+    # ---- 拖拽导入整合包
+    def dragEnterEvent(self, event):  # noqa: N802
+        if event.mimeData().hasUrls():
+            for url in event.mimeData().urls():
+                if url.toLocalFile().lower().endswith((".mrpack", ".zip")):
+                    event.acceptProposedAction()
+                    return
+        event.ignore()
+
+    def dropEvent(self, event):  # noqa: N802
+        for url in event.mimeData().urls():
+            path = url.toLocalFile()
+            if path.lower().endswith((".mrpack", ".zip")):
+                self.host.import_modpack(path)
+                event.acceptProposedAction()
+                return
+
+    def import_modpack(self) -> None:
+        from PySide6.QtWidgets import QFileDialog
+
+        path, _ = QFileDialog.getOpenFileName(
+            self, "选择整合包", str(Path.home()), "Modrinth 整合包 (*.mrpack *.zip)"
+        )
+        if path:
+            self.host.import_modpack(path)
 
     # ---- 行为
     def _on_kind(self, btn):
@@ -503,6 +537,17 @@ class SettingsPage(QWidget):
         self.mem.setSuffix(" MB")
         card.body.addWidget(self.mem)
 
+        card.body.addWidget(self._label("全局 JVM 参数（实例可在自己的设置里追加）"))
+        self.jvm = QLineEdit()
+        self.jvm.setPlaceholderText("-XX:+UseG1GC -XX:MaxGCPauseMillis=50")
+        card.body.addWidget(self.jvm)
+
+        card.body.addWidget(self._label("下载源（国内建议切镜像）"))
+        self.mirror = QComboBox()
+        self.mirror.addItem("官方源（Mojang / FabricMC）", "official")
+        self.mirror.addItem("BMCLAPI 镜像（国内加速）", "bmclapi")
+        card.body.addWidget(self.mirror)
+
         size_row = QHBoxLayout()
         vcol = QVBoxLayout()
         vcol.addWidget(self._label("窗口宽"))
@@ -607,6 +652,9 @@ class SettingsPage(QWidget):
         cfg = boot["config"]
         self.user.setText(cfg.get("username", ""))
         self.mem.setValue(int(cfg.get("memoryMB", 4096)))
+        self.jvm.setText(cfg.get("jvmArgs", "") or "")
+        mi = self.mirror.findData(cfg.get("mirror", "official"))
+        self.mirror.setCurrentIndex(max(0, mi))
         self.w.setValue(int(cfg.get("width", 1280)))
         self.h.setValue(int(cfg.get("height", 720)))
         self.dir_game.setText(str(core.MC_DIR))
@@ -641,6 +689,8 @@ class SettingsPage(QWidget):
             "memoryMB": self.mem.value(),
             "width": self.w.value(),
             "height": self.h.value(),
+            "jvmArgs": self.jvm.text().strip(),
+            "mirror": self.mirror.currentData() or "official",
         })
         self.host.toast("设置已保存", "ok")
         self.host.refresh_all()
@@ -676,6 +726,11 @@ class LogsPage(QWidget):
         clear = QPushButton("清屏")
         clear.setObjectName("Tiny")
         clear.clicked.connect(lambda: self.log.clear())
+        diag = QPushButton("分析日志")
+        diag.setObjectName("Tiny")
+        diag.setCursor(Qt.PointingHandCursor)
+        diag.clicked.connect(lambda: host.diagnose(host.selected_instance()["name"] if host.selected_instance() else ""))
+        bar.addWidget(diag)
         stop = QPushButton("结束游戏")
         stop.setObjectName("Tiny")
         stop.clicked.connect(host.stop_game)
