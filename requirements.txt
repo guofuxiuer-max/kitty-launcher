@@ -1,3 +1,4 @@
+# 需要 Python >= 3.10！（macOS 自带的 3.9 装不了）
 # 只装 Qt 的 Essentials 包（含 QtCore/QtGui/QtWidgets），不拉 600MB 的 Addons
 PySide6-Essentials>=6.6
 minecraft-launcher-lib>=8.0

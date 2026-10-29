@@ -63,12 +63,16 @@ py -3 -m venv .venv
 pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 ```
 
-### 方式二：用脚本
+### 方式二：用脚本（懒人版）
 
 ```bash
-./scripts/setup.sh     # 建 .venv + 装依赖
+./scripts/setup.sh     # 自动挑 Python 3.10+、建 .venv、装依赖
 ./run.sh               # 启动
 ```
+
+`setup.sh` 会依次尝试 `python3.14/3.13/3.12/3.11/3.10`、Homebrew 路径、
+以及系统 `python3`，**只挑 >= 3.10 的**；如果挑到的解释器没带 `ensurepip`
+（部分精简版 Python 会这样），它会从镜像直接把 pip 的 wheel 解压进 venv 兜底，不依赖系统 pip。
 
 ### 方式三：自己打包成 app
 
@@ -125,6 +129,27 @@ kitty-launcher/
 - [ ] 下载源切换（BMCLAPI 镜像加速）
 - [ ] 皮肤预览
 - [ ] Windows / Linux 上的成品包
+
+## 常见报错
+
+**`Could not find a version that satisfies the requirement minecraft-launcher-lib>=8.0`**
+
+Python 太老。这个库 7.0 起就要求 `>= 3.10`，而 macOS 自带的是 3.9。
+`setup.sh` 现在会自动挑 3.10+ 的解释器；如果你的机器上一个都没有：
+
+```bash
+brew install python@3.13     # 或者去 python.org 下安装包
+./scripts/setup.sh           # 重跑（会重建 .venv）
+```
+
+**`ERROR: Command '.../python -m ensurepip' returned non-zero`**
+
+同样的根因：解释器没带 ensurepip。新版 `setup.sh` 会用 `--without-pip`
+建 venv，再手动补 pip，不会卡在这一步。
+
+**`ModuleNotFoundError: No module named 'minecraft_launcher_lib'`**
+
+`.venv` 装到了错误的 Python 里。删掉重来：`rm -rf .venv && ./scripts/setup.sh`。
 
 ## 已知限制
 
