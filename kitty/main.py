@@ -13,8 +13,13 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 VENDOR = ROOT / "vendor"
-if VENDOR.exists() and str(VENDOR) not in sys.path:
-    sys.path.insert(0, str(VENDOR))
+# 只有当前解释器里没有 PySide6 时才用仓库自带的 vendor，
+# 否则会把 vendor 里旧版 requests / mll 顶掉 venv 里装好的新版本。
+try:  # noqa: SIM105
+    import PySide6  # noqa: F401
+except ImportError:
+    if VENDOR.exists() and str(VENDOR) not in sys.path:
+        sys.path.insert(0, str(VENDOR))
 
 from PySide6.QtCore import Qt, QTimer, QSize  # noqa: E402
 from PySide6.QtGui import QFont, QIcon, QPixmap, QPainter, QColor, QLinearGradient, QBrush  # noqa: E402
@@ -352,7 +357,7 @@ def screenshot(outdir: str) -> int:
 
 def main() -> int:
     if "--env" in sys.argv:
-        print(env_report.render())
+        print(env_report.render(), flush=True)
         return 0
     if "--help" in sys.argv or "-h" in sys.argv:
         print(
@@ -382,7 +387,7 @@ def main() -> int:
     # 启动时打一份环境自检：终端里能看，日志页也留一行摘要
     try:
         info = env_report.collect()
-        print(env_report.render(info))
+        print(env_report.render(info), flush=True)
         core.log(env_report.summary_line(info))
     except Exception as exc:  # noqa: BLE001
         core.log(f"[环境] 自检失败：{type(exc).__name__}: {exc}")
