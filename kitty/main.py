@@ -350,6 +350,18 @@ def screenshot(outdir: str) -> int:
 
 
 def main() -> int:
+    if "--help" in sys.argv or "-h" in sys.argv:
+        print(
+            "KittyLauncher 1.0.0\n\n"
+            "用法:\n"
+            "  python -m kitty.main                 启动图形界面\n"
+            "  python -m kitty.main --screenshot DIR  无头渲染五个页面截图\n"
+            "  python -m kitty.main --help           显示这段帮助\n\n"
+            "环境变量:\n"
+            "  KITTY_DATA   自定义数据目录（默认 ./data，打包后在用户目录）\n"
+            "  KITTY_PYTHON run.sh 用的解释器\n"
+        )
+        return 0
     if "--screenshot" in sys.argv:
         idx = sys.argv.index("--screenshot")
         out = sys.argv[idx + 1] if idx + 1 < len(sys.argv) else "screenshots"
