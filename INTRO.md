@@ -114,7 +114,7 @@ Python、Qt、Java 版本、数据目录、磁盘剩余、账号状态、每项 
 ## 三行跑起来
 
 ```bash
-git clone https://github.com/<your-name>/kitty-launcher.git
+git clone https://github.com/guofuxiuer-max/kitty-launcher.git
 cd kitty-launcher && ./scripts/setup.sh     # 自动挑 Python 3.10+、装依赖
 ./run.sh                                    # 开玩
 ```

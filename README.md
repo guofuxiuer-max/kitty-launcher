@@ -213,7 +213,7 @@ setup.sh（Python 库）     ~115 MB 下载 / ~365 MB 磁盘
 ### 方式一：直接跑源码（推荐开发者）
 
 ```bash
-git clone https://github.com/<your-name>/kitty-launcher.git
+git clone https://github.com/guofuxiuer-max/kitty-launcher.git
 cd kitty-launcher
 
 python3 -m venv .venv
@@ -378,7 +378,7 @@ git push -u origin main --tags
 
 ```bash
 # 仓库已经初始化并提交过一次，直接改 remote 推上去
-git remote add origin git@github.com:<your-name>/kitty-launcher.git
+git remote add origin git@github.com:guofuxiuer-max/kitty-launcher.git
 git branch -M main
 git push -u origin main
 ```
@@ -389,11 +389,11 @@ git push -u origin main
 git init
 git add .
 git commit -m "feat: macOS 专用的 PCL 风格 Minecraft 启动器"
-git remote add origin git@github.com:<your-name>/kitty-launcher.git
+git remote add origin git@github.com:guofuxiuer-max/kitty-launcher.git
 git push -u origin main
 ```
 
-记得把 README 第一段的 `<your-name>` 换成自己的 GitHub 用户名；截图在 `screenshots/`，
+仓库地址：`https://github.com/guofuxiuer-max/kitty-launcher`；截图在 `screenshots/`，
 重新生成用 `./scripts/screenshot.sh`（无头渲染，不弹窗）。
 
 ## 许可证
