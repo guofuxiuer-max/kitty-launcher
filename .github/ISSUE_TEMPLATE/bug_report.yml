@@ -1,0 +1,50 @@
+name: 🐛 Bug 报告
+description: 启动器崩了 / 装不上 / 启动不了游戏
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        先跑一下 `./run.sh --env`，把结果贴到下面第 4 项，能省掉一半来回问的时间喵～
+  - type: textarea
+    id: what
+    attributes:
+      label: 现象
+      description: 发生了什么？期望是什么？
+      placeholder: 点“启动游戏”之后窗口闪一下就没了……
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      placeholder: |
+        1. 下载页选 26.3 + Fabric
+        2. 创建实例
+        3. 点启动
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: 启动器版本 / 系统
+      placeholder: KittyLauncher 1.0.0 / macOS 26.1 Apple Silicon
+    validations:
+      required: true
+  - type: textarea
+    id: env
+    attributes:
+      label: 环境自检（`./run.sh --env` 的完整输出）
+      render: text
+      placeholder: 粘贴在这里
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志
+      description: 启动器「日志」页的最后 50 行，或 `data/logs/` 里最新的文件
+      render: text
+    validations:
+      required: false

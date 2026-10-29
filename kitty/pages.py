@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
     QSizePolicy, QSpinBox, QStackedWidget, QVBoxLayout, QWidget, QButtonGroup,
 )
 
-from . import core
+from . import core, env_report
 from .widgets import Card, InstanceCard, StatCard, Tag, elide, loader_cn
 
 
@@ -466,9 +466,16 @@ class SettingsPage(QWidget):
     def __init__(self, host):
         super().__init__()
         self.host = host
-        lay = QHBoxLayout(self)
-        lay.setContentsMargins(26, 22, 26, 22)
+        inner = QWidget()
+        outer = QVBoxLayout(inner)
+        outer.setContentsMargins(26, 22, 26, 22)
+        outer.setSpacing(14)
+        root = QVBoxLayout(self)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.addWidget(_scroll(inner))
+        lay = QHBoxLayout()
         lay.setSpacing(18)
+        outer.addLayout(lay)
 
         card = Card()
         card.setMaximumWidth(520)
@@ -551,9 +558,43 @@ class SettingsPage(QWidget):
         right.body.addWidget(about)
         right.body.addStretch(1)
 
+        env = Card()
+        t3 = QLabel("环境自检")
+        t3.setObjectName("Section")
+        env.body.addWidget(t3)
+        tip = QLabel("报 issue 时把这块整段复制过去，比描述一百句都管用。")
+        tip.setObjectName("Hint")
+        tip.setWordWrap(True)
+        env.body.addWidget(tip)
+
+        self.env_view = QPlainTextEdit()
+        self.env_view.setObjectName("Log")
+        self.env_view.setReadOnly(True)
+        self.env_view.setFixedHeight(250)
+        small = QFont("Menlo")
+        small.setPointSize(9)
+        self.env_view.setFont(small)
+        self.env_view.setPlainText(env_report.render())
+        env.body.addWidget(self.env_view)
+
+        env_btns = QHBoxLayout()
+        copy_btn = QPushButton("复制")
+        copy_btn.setObjectName("Ghost")
+        copy_btn.clicked.connect(self.copy_env)
+        again_btn = QPushButton("重新检测")
+        again_btn.setObjectName("Ghost")
+        again_btn.clicked.connect(self.refresh_env)
+        env_btns.addWidget(copy_btn)
+        env_btns.addWidget(again_btn)
+        env_btns.addStretch(1)
+        env.body.addLayout(env_btns)
+
         lay.addWidget(card, 0, Qt.AlignTop)
         lay.addWidget(right, 0, Qt.AlignTop)
         lay.addStretch(1)
+
+        outer.addWidget(env, 0)
+        outer.addStretch(1)
 
     @staticmethod
     def _label(text: str) -> QLabel:
@@ -589,6 +630,9 @@ class SettingsPage(QWidget):
         else:
             self.java_hint.setText("")
 
+        if hasattr(self, "env_view"):
+            self.env_view.setPlainText(env_report.render())
+
     def save(self) -> None:
         core.save_config({
             "username": self.user.text().strip() or "Steve",
@@ -604,6 +648,15 @@ class SettingsPage(QWidget):
         inst = self.host.selected_instance()
         if inst:
             core.open_path(inst["dir"])
+
+    def refresh_env(self) -> None:
+        self.env_view.setPlainText(env_report.render())
+
+    def copy_env(self) -> None:
+        from PySide6.QtWidgets import QApplication
+
+        QApplication.clipboard().setText(self.env_view.toPlainText())
+        self.host.toast("环境信息已复制到剪贴板", "ok")
 
 
 class LogsPage(QWidget):

@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (  # noqa: E402
 )
 
 from kitty import core  # noqa: E402
+from kitty import env_report  # noqa: E402
 from kitty import pages as pages_mod  # noqa: E402
 from kitty import theme  # noqa: E402
 from kitty.widgets import NavButton, Toast, elide  # noqa: E402
@@ -350,12 +351,16 @@ def screenshot(outdir: str) -> int:
 
 
 def main() -> int:
+    if "--env" in sys.argv:
+        print(env_report.render())
+        return 0
     if "--help" in sys.argv or "-h" in sys.argv:
         print(
             "KittyLauncher 1.0.0\n\n"
             "用法:\n"
             "  python -m kitty.main                 启动图形界面\n"
             "  python -m kitty.main --screenshot DIR  无头渲染五个页面截图\n"
+            "  python -m kitty.main --env            打印环境自检（贴 issue 用）\n"
             "  python -m kitty.main --help           显示这段帮助\n\n"
             "环境变量:\n"
             "  KITTY_DATA   自定义数据目录（默认 ./data，打包后在用户目录）\n"
@@ -373,6 +378,15 @@ def main() -> int:
     app.setWindowIcon(app_icon())
     win = App()
     win.show()
+
+    # 启动时打一份环境自检：终端里能看，日志页也留一行摘要
+    try:
+        info = env_report.collect()
+        print(env_report.render(info))
+        core.log(env_report.summary_line(info))
+    except Exception as exc:  # noqa: BLE001
+        core.log(f"[环境] 自检失败：{type(exc).__name__}: {exc}")
+
     return app.exec()
 
 
