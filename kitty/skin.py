@@ -22,10 +22,10 @@ import requests
 from PySide6.QtCore import QRect, Qt
 from PySide6.QtGui import QColor, QImage, QPainter, QPixmap
 
-from .paths import DATA
+from .paths import DATA, VERSION
 
 CACHE_DIR = DATA / "cache" / "skins"
-UA = {"User-Agent": "KittyLauncher/1.0.0"}
+UA = {"User-Agent": f"KittyLauncher/{VERSION}"}
 TTL = 24 * 3600
 TIMEOUT = 15
 

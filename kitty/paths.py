@@ -34,7 +34,7 @@ for _d in (DATA, MC_DIR, INSTANCES_DIR, LOGS_DIR):
     _d.mkdir(parents=True, exist_ok=True)
 
 
-VERSION = "1.0.0"
+VERSION = "0.9.0"
 
 
 def asset_path(name: str):

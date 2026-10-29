@@ -30,6 +30,7 @@ from PySide6.QtWidgets import (  # noqa: E402
 
 from kitty import core  # noqa: E402
 from kitty import env_report  # noqa: E402
+from kitty.paths import VERSION, asset_path  # noqa: E402
 from kitty.splash import show_splash  # noqa: E402
 from kitty import pages as pages_mod  # noqa: E402
 from kitty import theme  # noqa: E402
@@ -523,7 +524,7 @@ def main() -> int:
         return 0
     if "--help" in sys.argv or "-h" in sys.argv:
         print(
-            "KittyLauncher 1.0.0\n\n"
+            f"KittyLauncher {VERSION}\n\n"
             "用法:\n"
             "  python -m kitty.main                 启动图形界面\n"
             "  python -m kitty.main --screenshot DIR  无头渲染五个页面截图\n"

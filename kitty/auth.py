@@ -25,12 +25,12 @@ from pathlib import Path
 import requests
 from minecraft_launcher_lib import microsoft_account as ms
 
-from .paths import ACCOUNTS_PATH
+from .paths import ACCOUNTS_PATH, VERSION
 
 DEVICE_CODE_URL = "https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode"
 TOKEN_URL = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token"
 SCOPE = "XboxLive.signin offline_access"
-UA = {"User-Agent": "KittyLauncher/1.0.0"}
+UA = {"User-Agent": f"KittyLauncher/{VERSION}"}
 TIMEOUT = 25
 
 # XSTS 常见错误码 → 人话

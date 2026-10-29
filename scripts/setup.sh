@@ -38,6 +38,7 @@ pick_python() {
           /opt/homebrew/bin/python3.12 /opt/homebrew/bin/python3.11
           /usr/local/bin/python3.13 /usr/local/bin/python3.12
           python3)
+  # 某些发行版/工具会自带一份 Python 3.12（路径不存在时自动跳过）
   local bundled="/Applications/DSH Desktop.app/Contents/Resources/office-runtime/primary-runtime/dependencies/python/bin/python3"
   [ -x "$bundled" ] && cands+=("$bundled")
 

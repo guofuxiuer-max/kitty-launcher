@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
 )
 
 from . import core, env_report
+from .paths import VERSION
 from .widgets import Card, InstanceCard, StatCard, Tag, elide, loader_cn
 
 
@@ -602,7 +603,7 @@ class SettingsPage(QWidget):
         t3.setObjectName("Section")
         right.body.addSpacing(10)
         right.body.addWidget(t3)
-        about = QLabel("KittyLauncher 1.0.0\nPCL 风格的跨平台 Minecraft 启动器\nPython + PySide6 (Qt 6) · MIT")
+        about = QLabel(f"KittyLauncher {VERSION}\nPCL 风格的跨平台 Minecraft 启动器\nPython + PySide6 (Qt 6) · MIT")
         about.setObjectName("Hint")
         right.body.addWidget(about)
         right.body.addStretch(1)

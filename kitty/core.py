@@ -67,6 +67,7 @@ def _install_mirror_hook() -> None:
 _install_mirror_hook()
 
 from .paths import (  # noqa: E402
+    VERSION,
     ACCOUNTS_PATH,
     APP_DIR,
     CONFIG_PATH,
@@ -729,7 +730,7 @@ def build_command(inst: dict) -> dict:
         "defaultExecutablePath": java,
         "jvmArguments": [f"-Xmx{mem}M", "-Xms512M", "-Dfile.encoding=UTF-8", *extra_jvm],
         "launcherName": "KittyLauncher",
-        "launcherVersion": "1.0.0",
+        "launcherVersion": VERSION,
         "gameDirectory": str(instance_dir(inst["name"])),
         "customResolution": True,
         "resolutionWidth": str(eff["width"]),
@@ -839,7 +840,7 @@ def consume_exit() -> dict | None:
 # ---------------------------------------------------------------- Modrinth
 
 MODRINTH = "https://api.modrinth.com/v2"
-_http_headers = {"User-Agent": "KittyLauncher/1.0.0 (macOS)"}
+_http_headers = {"User-Agent": f"KittyLauncher/{VERSION}"}
 
 
 def _get_json(url: str, params: dict | None = None, timeout: int = 20):

@@ -16,7 +16,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-VERSION = "1.0.0"
+from .paths import VERSION  # 版本号唯一来源
 MIN_PY = (3, 10)
 
 
