@@ -1,0 +1,4 @@
+# 只装 Qt 的 Essentials 包（含 QtCore/QtGui/QtWidgets），不拉 600MB 的 Addons
+PySide6-Essentials>=6.6
+minecraft-launcher-lib>=8.0
+requests>=2.31

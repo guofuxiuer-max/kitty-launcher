@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+vendor/
+data/
+build/
+dist/
+*.spec.bak
+.DS_Store
+.idea/
+.vscode/
