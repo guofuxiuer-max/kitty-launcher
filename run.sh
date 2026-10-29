@@ -8,6 +8,11 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+if [ "$(uname -s)" != "Darwin" ]; then
+  echo "KittyLauncher 只支持 macOS（当前：$(uname -s)）。Windows / Linux 不做适配。" >&2
+  exit 1
+fi
+
 # 1) 优先用 setup.sh 建好的虚拟环境
 if [ -x .venv/bin/python ] && .venv/bin/python -c "import PySide6, minecraft_launcher_lib" >/dev/null 2>&1; then
   PY="$PWD/.venv/bin/python"

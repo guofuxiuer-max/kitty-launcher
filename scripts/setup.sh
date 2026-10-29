@@ -14,6 +14,11 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+if [ "$(uname -s)" != "Darwin" ]; then
+  echo "KittyLauncher 只支持 macOS（当前：$(uname -s)）。" >&2
+  exit 1
+fi
+
 INDEX="${PIP_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}"
 VENV_DIR=".venv"
 ASSUME_YES=0

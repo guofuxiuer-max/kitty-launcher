@@ -5,11 +5,12 @@
 ![version](https://img.shields.io/badge/version-0.9.0-purple)
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![python](https://img.shields.io/badge/python-3.10%2B-blue)
-![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey)
+![platform](https://img.shields.io/badge/platform-macOS%2011%2B-black)
 ![status](https://img.shields.io/badge/status-beta-orange)
 
-> 一个 **PCL 风格**的 Minecraft 启动器，跨平台（macOS / Windows / Linux），Python + PySide6 写的原生桌面程序。
+> 一个 **macOS 专用**的 PCL 风格 Minecraft 启动器，Python + PySide6 写的原生桌面程序。
 > 因为 PCL2 只跑在 Windows 上，Mac 用户一直缺一个长得像它、用起来也像它的启动器，所以有了这个。
+> **只做 macOS** —— Windows / Linux 不做适配，也不接受相关 PR。
 
 ## 项目状态（先看这里）
 
@@ -18,7 +19,7 @@
 | 项目 | 情况 |
 |---|---|
 | macOS 26 / Apple Silicon | ✅ 实测：装 26.3、Fabric、Sodium、启动进游戏、正版登录链路、3D 皮肤 |
-| Windows / Linux | ⚠️ 代码跨平台，**尚未实测**；打包脚本只验证过 macOS |
+| Windows / Linux | ❌ **不支持**，也不打算支持 |
 | 自动化测试 | ❌ 只有 CI 里的冒烟（语法 + 引擎 + 无头渲染），没有单测 |
 | 数据兼容性 | ⚠️ `instances.json` / `accounts.json` 格式在 1.0 前可能变 |
 | 测试玩家 | 就作者一个喵 |
@@ -182,7 +183,7 @@ PCL2 是 Windows 专用的闭源启动器，这里按功能逐条对照（✅ �
 | 联机（NAT 穿透） | ✅ | ❌ |
 | 多语言（中/英切换） | ✅ | ❌ |
 | 自动更新 | ✅ | ❌ |
-| macOS / Linux | ❌ | ✅ |
+| 平台 | Windows 独占 | **仅 macOS** |
 | 开源 | ❌ | ✅ MIT |
 
 ## setup.sh 到底下载什么？
@@ -215,15 +216,9 @@ setup.sh（Python 库）     ~115 MB 下载 / ~365 MB 磁盘
 git clone https://github.com/<your-name>/kitty-launcher.git
 cd kitty-launcher
 
-# macOS / Linux
 python3 -m venv .venv
 ./.venv/bin/pip install -r requirements.txt
 ./.venv/bin/python -m kitty.main
-
-# Windows
-py -3 -m venv .venv
-.venv\Scripts\pip install -r requirements.txt
-.venv\Scripts\python -m kitty.main
 ```
 
 国内网络加个镜像更快：
@@ -249,7 +244,7 @@ pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 ./scripts/build_app.sh          # 需要 pyinstaller，输出 dist/KittyLauncher.app
 ```
 
-Windows 上执行 `pyinstaller kitty_launcher.spec` 会得到 `dist/KittyLauncher.exe`。
+产物是 `dist/KittyLauncher.app`，双击即开（首次可能要在「系统设置 → 隐私与安全性」里放行）。
 
 ## 目录结构
 
@@ -274,8 +269,7 @@ kitty-launcher/
 ```
 
 数据目录规则：源码运行时在仓库 `data/`；打包成 app 后落到
-`~/Library/Application Support/KittyLauncher`（macOS）、
-`%APPDATA%\KittyLauncher`（Windows）、`~/.local/share/KittyLauncher`（Linux）。
+`~/Library/Application Support/KittyLauncher`。
 想强制指定：`export KITTY_DATA=/some/dir`。
 
 ## 它是怎么工作的（三层）
@@ -310,7 +304,7 @@ kitty-launcher/
 - [ ] 换肤（上传皮肤需要正版 API，Mojang 官方换肤接口要鉴权）
 - [ ] 自动更新（检查 GitHub Release）
 - [ ] 多语言（中 / 英）
-- [ ] Windows / Linux 成品包
+- [ ] 公证（notarization），双击不再被 Gatekeeper 拦
 
 ## 命令行参数
 
@@ -355,7 +349,7 @@ brew install python@3.13     # 或者去 python.org 下安装包
 
 ## 已知限制
 
-- **只测过 macOS**：Windows / Linux 需要有人帮忙验证（提 issue 就行）
+- **只支持 macOS**：Windows / Linux 不维护（不是暂不支持，是不做）
 - 单账号：还不支持正版 / 离线多档案并存
 - 没有自动更新：升级靠 `git pull`
 - OptiFine / NeoForge 还没做
@@ -369,7 +363,7 @@ brew install python@3.13     # 或者去 python.org 下安装包
 git status --short
 git ls-files | grep -E "data/|vendor/|\.venv/|accounts\.json" && echo "⚠️ 有不该提交的东西"
 
-# 2) 打标签（0.9.0 = beta；跨平台实测完再发 1.0.0）
+# 2) 打标签（0.9.0 = beta；自动化测试补齐后再发 1.0.0）
 git tag -a v0.9.0 -m "KittyLauncher 0.9.0 beta"
 git push -u origin main --tags
 ```
@@ -377,7 +371,7 @@ git push -u origin main --tags
 仓库设置里建议勾上：
 
 - Topics：`minecraft-launcher` `pyside6` `qt` `python` `macos` `modrinth` `fabric`
-- About 一句话：`PCL 风格的跨平台 Minecraft 启动器 · Python + PySide6 · MIT`
+- About 一句话：`macOS 专用的 PCL 风格 Minecraft 启动器 · Python + PySide6 · MIT`
 - 开 Issues / PR / Discussions
 
 ## 发布到 GitHub
@@ -394,7 +388,7 @@ git push -u origin main
 ```bash
 git init
 git add .
-git commit -m "feat: PCL 风格跨平台 Minecraft 启动器"
+git commit -m "feat: macOS 专用的 PCL 风格 Minecraft 启动器"
 git remote add origin git@github.com:<your-name>/kitty-launcher.git
 git push -u origin main
 ```

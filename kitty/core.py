@@ -221,7 +221,6 @@ def _runtime_java_paths() -> list[str]:
     pats = [
         str(MC_DIR / "runtime" / "*" / "*" / "*" / "jre.bundle" / "Contents" / "Home" / "bin" / "java"),
         str(MC_DIR / "runtime" / "*" / "*" / "*" / "bin" / "java"),
-        str(MC_DIR / "runtime" / "*" / "*" / "*" / "bin" / "java.exe"),
         # 少数旧布局只有两层
         str(MC_DIR / "runtime" / "*" / "*" / "bin" / "java"),
     ]

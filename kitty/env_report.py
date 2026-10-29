@@ -139,6 +139,11 @@ def checks(info: dict) -> list[tuple[str, str, str]]:
     else:
         out.append(("⚠️", "Java", f"找到 {len(majors)} 个，但最高只有 {max(majors)}，现代版本需要 21+"))
 
+    if info["os"].startswith("Darwin"):
+        out.append(("✅", "系统", "macOS"))
+    else:
+        out.append(("❌", "系统", f"{info['os']} —— 本项目只支持 macOS"))
+
     if info.get("core_ok"):
         if info.get("data_writable"):
             out.append(("✅", "数据目录", f"{info['data_dir']}（可写，剩余 {info['disk_free_gb']} GB）"))

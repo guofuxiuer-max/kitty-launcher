@@ -7,17 +7,16 @@ from pathlib import Path
 
 
 def data_root() -> Path:
-    """数据目录：开发时用仓库里的 data/，打包成 app 后用系统用户目录。"""
+    """数据目录：开发时用仓库里的 data/，打包成 .app 后用 ~/Library/Application Support。"""
     env = os.environ.get("KITTY_DATA")
     if env:
         return Path(env).expanduser()
     if getattr(sys, "frozen", False):
-        if sys.platform == "darwin":
-            return Path.home() / "Library" / "Application Support" / "KittyLauncher"
-        if os.name == "nt":
-            return Path(os.environ.get("APPDATA", Path.home())) / "KittyLauncher"
-        return Path.home() / ".local" / "share" / "KittyLauncher"
+        return Path.home() / "Library" / "Application Support" / "KittyLauncher"
     return Path(__file__).resolve().parent.parent / "data"
+
+
+IS_MACOS = sys.platform == "darwin"
 
 
 APP_DIR = Path(__file__).resolve().parent

@@ -147,7 +147,7 @@ class SplashScreen(QWidget):
         f = QFont()
         f.setPointSize(10)
         p.setFont(f)
-        p.drawText(QRectF(0, 168, W, 20), Qt.AlignCenter, f"PCL 风格的 Minecraft 启动器 · v{VERSION}")
+        p.drawText(QRectF(0, 168, W, 20), Qt.AlignCenter, f"macOS 专用的 Minecraft 启动器 · v{VERSION}")
 
         # 进度条
         bar = QRectF(70, H - 42, W - 140, 4)

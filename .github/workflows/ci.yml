@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [macos-latest]
         python: ["3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
@@ -32,12 +32,7 @@ jobs:
         run: |
           python -c "from kitty import core, paths; print('version', paths.VERSION); print('java:', [j['major'] for j in core.list_java()]); print('versions:', len(core.remote_versions()))"
 
-      # GUI 渲染在部分 CI 环境缺系统库，失败不影响结论
+      # GUI 渲染在 CI 上偶发失败，不阻塞结论
       - name: 界面无头渲染（非阻塞）
         continue-on-error: true
-        if: runner.os != 'Windows'
-        run: |
-          if [ "$RUNNER_OS" = "Linux" ]; then
-            sudo apt-get update && sudo apt-get install -y libegl1 libxkbcommon-x11-0 libgl1 libdbus-1-3
-          fi
-          QT_QPA_PLATFORM=offscreen python -m kitty.main --screenshot screenshots-ci
+        run: QT_QPA_PLATFORM=offscreen python -m kitty.main --screenshot screenshots-ci

@@ -1,7 +1,7 @@
 # KittyLauncher · 猫咪启动器
 
 > **Mac 上没有 PCL？那就自己造一个。**
-> 一个用 Python + Qt 写的跨平台 Minecraft 启动器：PCL 的操作手感、原生的窗口、MIT 开源。
+> 一个用 Python + Qt 写的 **macOS 专用** Minecraft 启动器：PCL 的操作手感、原生的窗口、MIT 开源。
 
 ---
 
@@ -12,7 +12,7 @@ Mac 玩家打开官网，看到一行小字：**只支持 Windows**。
 然后在一堆 Java 套壳启动器里挑一个能用的，忍受 2013 年的界面和永远看不懂的报错。
 
 KittyLauncher 就是来补这个洞的：
-**把 PCL 那套"点两下就能玩"的体验，搬到 macOS / Linux / Windows 上，并且把源码摊开给你看。**
+**把 PCL 那套"点两下就能玩"的体验，搬到 macOS 上，并且把源码摊开给你看。**
 
 ---
 
@@ -101,7 +101,7 @@ Python、Qt、Java 版本、数据目录、磁盘剩余、账号状态、每项 
 
 | | KittyLauncher | PCL2 | HMCL | Prism |
 |---|---|---|---|---|
-| macOS / Linux | ✅ | ❌ | ✅ | ✅ |
+| 原生 macOS 体验 | ✅ | ❌ | ⚠️ Java 套壳 | ⚠️ Qt |
 | 界面语言 | Python + Qt | VB.NET | Java | C++ |
 | 开源协议 | **MIT** | 闭源 | GPL-3 | GPL-3 |
 | 3D 皮肤预览 | ✅ | ✅ | ✅ | ✅ |
@@ -147,7 +147,7 @@ cd kitty-launcher && ./scripts/setup.sh     # 自动挑 Python 3.10+、装依赖
 - [ ] CurseForge 作为第二个模组源
 - [ ] 多账号档案（正版 / 离线并存）
 - [ ] 换肤（上传皮肤）
-- [ ] Windows / Linux 成品包
+- [ ] 公证（notarization），双击不再被 Gatekeeper 拦
 
 ---
 

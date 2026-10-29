@@ -1,5 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
-# PyInstaller 打包配置：pyinstaller kitty_launcher.spec
+# PyInstaller 打包配置（macOS .app）：pyinstaller --noconfirm kitty_launcher.spec
 from PyInstaller.utils.hooks import collect_submodules
 
 block_cipher = None

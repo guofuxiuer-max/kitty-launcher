@@ -1,6 +1,8 @@
 # 参与贡献
 
-欢迎提 issue 和 PR。项目只有一个目标：**在 macOS / Linux 上把 PCL 那种顺手的感觉做出来**。
+欢迎提 issue 和 PR。项目只有一个目标：**在 macOS 上把 PCL 那种顺手的感觉做出来**。
+
+> 本项目只支持 macOS。Windows / Linux 的适配 PR 不会合入（没精力维护三套）。
 
 ## 开发环境
 
