@@ -41,6 +41,10 @@ from kitty.dialogs import (  # noqa: E402
 from kitty.widgets import NavButton, Toast, elide  # noqa: E402
 
 
+# 页面顺序只在这里定义一次，栈和导航都按它来
+PAGE_ORDER = ("launch", "download", "mods", "settings", "logs", "users")
+
+
 def _exit_is_normal(exit_info: dict) -> bool:
     """正常退出：退出码 0 / 我们自己点了「结束游戏」/ 被信号终止（143 = 128+15）。"""
     if exit_info.get("userStopped"):
@@ -77,7 +81,7 @@ class App(QMainWindow):
 
         self.stack = QStackedWidget()
         self.pages = pages_mod.build_pages(self)
-        for key in ("launch", "download", "mods", "settings", "logs", "users"):
+        for key in PAGE_ORDER:
             self.stack.addWidget(self.pages[key])
         right.addWidget(self.stack, 1)
         lay.addLayout(right, 1)
@@ -193,7 +197,7 @@ class App(QMainWindow):
         self.apply_theme(not self.dark)
 
     def go(self, key: str) -> None:
-        order = ["launch", "download", "settings", "logs", "users", "mods"]
+        order = list(PAGE_ORDER)
         if key in order:
             self.stack.setCurrentIndex(order.index(key))
             btn = getattr(self, "nav_buttons", {}).get(key)

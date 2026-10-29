@@ -653,7 +653,6 @@ class SettingsPage(QWidget):
 
     def refresh(self, boot: dict) -> None:
         cfg = boot["config"]
-        self.user.setText(cfg.get("username", ""))
         self.mem.setValue(int(cfg.get("memoryMB", 4096)))
         self.jvm.setText(cfg.get("jvmArgs", "") or "")
         mi = self.mirror.findData(cfg.get("mirror", "official"))
