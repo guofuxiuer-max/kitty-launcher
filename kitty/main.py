@@ -106,6 +106,7 @@ class App(QMainWindow):
         lay.addLayout(holder)
         lay.addSpacing(10)
 
+        self.nav_buttons: dict[str, QPushButton] = {}
         self.nav_group = QButtonGroup(self)
         self.nav_group.setExclusive(True)
         for i, (key, icon, text) in enumerate((
@@ -120,6 +121,7 @@ class App(QMainWindow):
             if i == 0:
                 btn.setChecked(True)
             self.nav_group.addButton(btn)
+            self.nav_buttons[key] = btn
             holder2 = QHBoxLayout()
             holder2.addWidget(btn, 0, Qt.AlignHCenter)
             lay.addLayout(holder2)
@@ -185,9 +187,12 @@ class App(QMainWindow):
         self.apply_theme(not self.dark)
 
     def go(self, key: str) -> None:
-        order = ["launch", "download", "mods", "settings", "logs"]
+        order = ["launch", "download", "settings", "logs", "mods"]
         if key in order:
             self.stack.setCurrentIndex(order.index(key))
+            btn = getattr(self, "nav_buttons", {}).get(key)
+            if btn is not None:
+                btn.setChecked(True)
             page = self.pages[key]
             if key == "download":
                 page.reload()
@@ -448,17 +453,21 @@ def screenshot(outdir: str) -> int:
     except Exception:
         pass
     Path(outdir).mkdir(parents=True, exist_ok=True)
-    order = ["launch", "download", "mods", "settings", "logs"]
+    order = ["launch", "download", "settings", "logs", "mods"]
     for key in order:
         win.go(key)
+        # 明确切栈 + 强制重绘，否则 offscreen 下可能抓到上一页的缓存
+        win.stack.setCurrentWidget(win.pages[key])
         if key == "mods":
             try:
                 win.pages["mods"].search.setText("sodium")
                 win.pages["mods"].do_search()
             except Exception:
                 pass
+        page = win.pages[key]
+        page.update()
+        page.repaint()
         app.processEvents()
-        QTimer.singleShot(0, lambda: None)
         app.processEvents()
         path = Path(outdir) / f"{key}.png"
         win.grab().save(str(path))

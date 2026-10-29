@@ -868,6 +868,9 @@ def modrinth_search(query: str, mc_version: str, loader: str, limit: int = 18, o
             },
         )
     except Exception as exc:  # noqa: BLE001
+        name = type(exc).__name__
+        if "Timeout" in name or "Connection" in name or "Request" in name:
+            return {"error": "连不上 Modrinth（网络问题），稍后再试或者开个代理喵", "hits": []}
         return {"error": f"Modrinth 请求失败：{exc}", "hits": []}
     hits = []
     for h in data.get("hits", []):

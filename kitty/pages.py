@@ -129,9 +129,16 @@ class LaunchPage(QWidget):
             self.hint.setText("这个实例的版本还没下载完")
         else:
             java = inst.get("java") or {}
-            self.hint.setText(
-                f"离线登录 · Java {java.get('major','?')} · 内存 {cfg.get('memoryMB', 4096)} MB"
-            )
+            mode = "离线登录"
+            try:
+                from . import auth
+
+                st = auth.status()
+                if st.get("loggedIn"):
+                    mode = f"微软正版 · {st['name']}"
+            except Exception:
+                pass
+            self.hint.setText(f"{mode} · Java {java.get('major','?')} · 内存 {cfg.get('memoryMB', 4096)} MB")
 
         # 实例卡
         while self.inst_grid.count():
