@@ -229,15 +229,35 @@ class App(QMainWindow):
     def create_instance(self, name: str, mc_version: str, loader: str):
         inst = core.create_instance(name, mc_version, loader)
         core.save_config({"selectedInstance": inst["name"]})
+        # 注意：install_loader_job 内部已经会先补齐原版，别再单独起一个 vanilla 任务
+        # —— 同时只能跑一个任务，第二个会被拒绝，结果就是"选了 Fabric 却只装了原版"。
         if loader == "vanilla":
             job = core.install_vanilla_job(mc_version, inst["name"])
         else:
-            core.install_vanilla_job(mc_version, "")  # 先补原版，再叠加载器
             job = core.install_loader_job(inst["name"], loader)
-        self.toast(f"实例「{inst['name']}」已创建，开始下载", "ok")
+
+        if isinstance(job, dict) and job.get("error"):
+            self.toast(job["error"], "err")
+        else:
+            self.toast(f"实例「{inst['name']}」已创建，开始下载", "ok")
         self.refresh_all()
         self.go("launch")
         return job
+
+    def install_loader_for(self, name: str) -> None:
+        inst = core.get_instance(name)
+        if not inst:
+            return
+        loader = inst.get("loader") or "vanilla"
+        if loader == "vanilla":
+            self.toast("这是原版实例，不需要加载器", "err")
+            return
+        job = core.install_loader_job(name, loader)
+        if isinstance(job, dict) and job.get("error"):
+            self.toast(job["error"], "err")
+        else:
+            self.toast(f"开始安装 {loader} 加载器…", "ok")
+        self.refresh_all()
 
     def launch_selected(self) -> None:
         inst = self.selected_instance()

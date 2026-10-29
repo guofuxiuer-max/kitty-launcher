@@ -140,7 +140,10 @@ def java_info(path: str) -> dict | None:
         text = (out.stderr or "") + (out.stdout or "")
         m = re.search(r'version "([^"]+)"', text)
         ver = m.group(1) if m else "?"
-        vendor = "Oracle" if "Oracle" in text else ("Temurin" if "Temurin" in text else ("Homebrew" if "Homebrew" in text else "OpenJDK"))
+        if "minecraft/runtime" in p.replace(os.sep, "/"):
+            vendor = "Mojang 自带"
+        else:
+            vendor = "Oracle" if "Oracle" in text else ("Temurin" if "Temurin" in text else ("Homebrew" if "Homebrew" in text else "OpenJDK"))
         info = {"path": p, "version": ver, "major": _java_major(ver), "vendor": vendor}
     except Exception:
         return None
@@ -148,10 +151,28 @@ def java_info(path: str) -> dict | None:
     return info
 
 
+def _runtime_java_paths() -> list[str]:
+    """Mojang 官方 JRE：装版本时顺带下到 data/minecraft/runtime/ 里的那份。"""
+    import glob
+
+    # 布局：runtime/<组件>/<平台架构>/<组件>/[jre.bundle/Contents/Home/]bin/java
+    pats = [
+        str(MC_DIR / "runtime" / "*" / "*" / "*" / "jre.bundle" / "Contents" / "Home" / "bin" / "java"),
+        str(MC_DIR / "runtime" / "*" / "*" / "*" / "bin" / "java"),
+        str(MC_DIR / "runtime" / "*" / "*" / "*" / "bin" / "java.exe"),
+        # 少数旧布局只有两层
+        str(MC_DIR / "runtime" / "*" / "*" / "bin" / "java"),
+    ]
+    found: list[str] = []
+    for pat in pats:
+        found.extend(sorted(glob.glob(pat), reverse=True))
+    return found
+
+
 def _candidate_java_paths() -> list[str]:
     import glob
 
-    cands: list[str] = []
+    cands: list[str] = list(_runtime_java_paths())
     cfg = load_config()
     if cfg.get("javaPath"):
         cands.append(cfg["javaPath"])

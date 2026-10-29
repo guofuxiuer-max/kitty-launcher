@@ -39,6 +39,28 @@
 | 启动 Fabric | `Loading Minecraft 26.3 with Fabric Loader 0.20.1` |
 | Modrinth 装 Sodium | `sodium-fabric-0.9.3-beta.1+mc26.3.jar`，启动日志确认 `- sodium 0.9.3-beta.1+mc26.3` 已加载 |
 
+## setup.sh 到底下载什么？
+
+一句话：**只装 Python 那一侧的库，不碰 Java，也不碰 Minecraft 本体。**
+
+| 东西 | setup.sh 会下吗 | 体积 | 什么时候用到 |
+|---|---|---|---|
+| PySide6-Essentials + shiboken6 | ✅ 会 | 下载 ~106 MB，展开 ~348 MB | 界面 |
+| minecraft-launcher-lib + requests（含 urllib3 / certifi / idna / charset-normalizer） | ✅ 会 | ~1 MB | 下载、安装、启动 |
+| Python 解释器本身 | ❌ 不下 | — | 需要机器上已有 3.10+；一个都没有时会问你要不要用 brew 装 |
+| **Java** | ❌ 不下 | 每个组件约 100 MB | 装游戏版本时启动器**自动**下 Mojang 官方 JRE 到 `data/minecraft/runtime/` |
+| **Minecraft 本体 + 资源** | ❌ 不下 | 26.3 约 700 MB | 在「下载」页建实例时才下 |
+
+一个「什么都没有」的干净机器，从零到能玩：
+
+```
+setup.sh（Python 库）     ~115 MB 下载 / ~365 MB 磁盘
+第一次装 26.3（含 JRE）    ~700 MB 下载 / ~1.0 GB 磁盘
+```
+
+**玩家不需要自己装 Java**：只要装过任意一个版本，`data/minecraft/runtime/` 里就有一份能用的 JRE，
+环境自检里显示成 `Java 25 · Mojang 自带`，启动时也会自动挑它。
+
 ## 快速开始
 
 ### 方式一：直接跑源码（推荐开发者）

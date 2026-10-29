@@ -1,35 +1,30 @@
 #!/usr/bin/env bash
-# 建虚拟环境并装依赖。
+# 建虚拟环境并装 Python 依赖。
 #
-# 注意：minecraft-launcher-lib 8.x 需要 Python >= 3.10，PySide6 6.x 也要 3.10+。
-# macOS 系统自带的是 3.9，所以这里会主动去找 3.10+ 的解释器；
-# 如果只有没带 ensurepip 的 3.12，就手动塞一个 pip 进去。
+# 它只负责「Python 这一侧」：
+#   下载 PySide6-Essentials + minecraft-launcher-lib + requests（约 115 MB，展开约 365 MB）
+# 它【不】负责：
+#   Java —— 装游戏版本时由启动器自动下 Mojang 官方 JRE（data/minecraft/runtime/）
+#   Minecraft 本体 —— 第一次在启动器里建实例时才下，约 800 MB
+#
+# 用法：
+#   ./scripts/setup.sh            交互式
+#   ./scripts/setup.sh --yes      缺 Python 时别问，直接 brew 装
+#   PIP_INDEX_URL=... ./scripts/setup.sh
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 INDEX="${PIP_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}"
 VENV_DIR=".venv"
+ASSUME_YES=0
+for a in "$@"; do
+  if [ "$a" = "--yes" ] || [ "$a" = "-y" ]; then
+    ASSUME_YES=1
+  fi
+done
 
-fail() {
-  cat >&2 <<'EOF'
-
-============================================================
-需要一个 Python >= 3.10（macOS 自带的 3.9 太老）。三选一：
-
-  1) Homebrew 装一个（推荐）：
-       brew install python@3.13
-     然后重跑 ./scripts/setup.sh
-
-  2) 官网安装包：
-       https://www.python.org/downloads/macos/
-
-  3) 手动指定解释器：
-       PYTHON=/path/to/python3.12 ./scripts/setup.sh
-
-============================================================
-EOF
-  exit 1
-}
+echo "==> 将要下载：PySide6-Essentials / minecraft-launcher-lib / requests（约 115 MB）"
+echo "    不会下 Java 和 Minecraft 本体：Java 在装版本时自动装 Mojang 官方 JRE，本体按需下载"
 
 py_ok() {
   "$1" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)' 2>/dev/null
@@ -59,9 +54,45 @@ pick_python() {
 }
 
 PY="$(pick_python || true)"
+
 if [ -z "$PY" ]; then
-  echo "当前 python3 是：$(python3 -V 2>&1 || echo 未安装)"
-  fail
+  echo
+  echo "⚠️  没找到 Python >= 3.10（当前 python3 是：$(python3 -V 2>&1 || echo 未安装)）"
+  if command -v brew >/dev/null 2>&1; then
+    answer="y"
+    if [ "$ASSUME_YES" -eq 0 ] && [ -t 0 ]; then
+      read -r -p "要我用 Homebrew 装一个 python@3.13 吗？[Y/n] " answer || answer="y"
+      answer="${answer:-y}"
+    fi
+    case "$answer" in
+      [Yy]*)
+        echo "==> brew install python@3.13（约 40 MB，几分钟）"
+        brew install python@3.13
+        hash -r
+        PY="$(pick_python || true)"
+        ;;
+    esac
+  fi
+fi
+
+if [ -z "$PY" ]; then
+  cat >&2 <<'EOF'
+
+============================================================
+需要 Python >= 3.10，但没找到，也没有可用的 Homebrew。三选一：
+
+  1) 装 Homebrew 后再跑本脚本：
+       /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+  2) 官网安装包（最简单）：
+       https://www.python.org/downloads/macos/
+
+  3) 已经有 Python，只是不在 PATH 里：
+       PYTHON=/path/to/python3.12 ./scripts/setup.sh
+
+============================================================
+EOF
+  exit 1
 fi
 echo "==> 使用解释器：$PY  ($("$PY" -V 2>&1))"
 
@@ -74,9 +105,9 @@ if [ -d "$VENV_DIR" ]; then
 fi
 
 if [ ! -d "$VENV_DIR" ]; then
-  echo "==> 创建虚拟环境"
+  echo "==> 创建虚拟环境 .venv"
   if ! "$PY" -m venv "$VENV_DIR" >/dev/null 2>&1; then
-    echo "==> 该解释器没有 ensurepip，改用无 pip 方式创建并手动补 pip"
+    echo "==> 该解释器没带 ensurepip，改用无 pip 方式创建 + 手动补 pip"
     rm -rf "$VENV_DIR"
     "$PY" -m venv --without-pip "$VENV_DIR"
     SITE="$("$VENV_DIR/bin/python" -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')"
@@ -105,5 +136,7 @@ print("minecraft-launcher-lib", getattr(m, "__version__", "?"))
 print("PySide6", PySide6.__version__)
 print("requests", requests.__version__)
 EOF
+echo "==> .venv 体积：$(du -sh .venv | cut -f1)"
 echo
 echo "装好了。启动：./run.sh"
+echo "只看环境：./run.sh --env"

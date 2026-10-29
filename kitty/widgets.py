@@ -63,6 +63,7 @@ class Tag(QLabel):
             "dim": ("#9498ac", "rgba(255,255,255,0.05)", "#2b3040"),
             "accent": ("#d8b4fe", "rgba(168,85,247,0.16)", "rgba(168,85,247,0.35)"),
             "ok": ("#6ee7b7", "rgba(52,211,153,0.14)", "rgba(52,211,153,0.35)"),
+            "warn": ("#fcd34d", "rgba(251,191,36,0.14)", "rgba(251,191,36,0.35)"),
         }
         fg, bg, bd = palette.get(color, palette["dim"])
         self.setStyleSheet(
@@ -76,6 +77,7 @@ class InstanceCard(QFrame):
 
     clicked = Signal(str)
     deleted = Signal(str)
+    repair = Signal(str)
 
     def __init__(self, inst: dict, selected: bool = False, parent=None):
         super().__init__(parent)
@@ -114,6 +116,19 @@ class InstanceCard(QFrame):
         col.addWidget(ver)
         top.addLayout(col, 1)
 
+        # 选了加载器但版本 id 还等于原版 → 加载器没装上（多半是任务被顶掉/网络失败）
+        needs_loader = (
+            inst.get("loader") not in (None, "", "vanilla")
+            and inst.get("versionId") == inst.get("mcVersion")
+        )
+        self.repair_btn = QPushButton("装加载器")
+        self.repair_btn.setObjectName("Tiny")
+        self.repair_btn.setCursor(Qt.PointingHandCursor)
+        self.repair_btn.setToolTip("这个实例只装了原版，点一下补装加载器")
+        self.repair_btn.clicked.connect(lambda: self.repair.emit(inst.get("name", "")))
+        self.repair_btn.setVisible(needs_loader)
+        top.addWidget(self.repair_btn, 0, Qt.AlignTop)
+
         self.del_btn = QPushButton("✕")
         self.del_btn.setObjectName("Tiny")
         self.del_btn.setFixedSize(22, 22)
@@ -127,6 +142,8 @@ class InstanceCard(QFrame):
         tags.setSpacing(5)
         tags.addWidget(Tag("已就绪" if inst.get("installed") else "缺文件", "ok" if inst.get("installed") else "dim"))
         tags.addWidget(Tag(f"{inst.get('modCount',0)} 模组"))
+        if needs_loader:
+            tags.addWidget(Tag("加载器未装", "warn"))
         if inst.get("loader") and inst["loader"] != "vanilla":
             tags.addWidget(Tag(loader_cn(inst["loader"]), "accent"))
         tags.addStretch(1)
