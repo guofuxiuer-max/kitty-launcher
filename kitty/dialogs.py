@@ -7,7 +7,7 @@ from __future__ import annotations
 import html
 from pathlib import Path
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
     QDialog, QFileDialog, QFormLayout, QHBoxLayout, QLabel, QLineEdit,
     QPlainTextEdit, QPushButton, QScrollArea, QSpinBox, QComboBox, QVBoxLayout, QWidget,
@@ -249,3 +249,161 @@ class DiagnosisDialog(QDialog):
 
         QApplication.clipboard().setText(self.text or "（没有可复制的诊断）")
         self.host.toast("诊断结果已复制", "ok")
+
+
+class MicrosoftLoginDialog(QDialog):
+    """设备码登录：生成 8 位码 → 玩家去浏览器输 → 这边轮询拿 token。"""
+
+    def __init__(self, host, parent=None):
+        super().__init__(parent or host)
+        self.host = host
+        self.setWindowTitle("微软正版登录")
+        self.setMinimumWidth(560)
+        self.code = None
+        self.timer = None
+
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(22, 20, 22, 18)
+        lay.setSpacing(10)
+
+        title = QLabel("用微软账号登录")
+        title.setStyleSheet("font-size:17px; font-weight:600;")
+        lay.addWidget(title)
+
+        tip = QLabel(
+            "流程：点「生成验证码」→ 浏览器会打开 microsoft.com/link 并显示一个 8 位码 → "
+            "输入后选择你的 Xbox 档案 → 这边自动完成登录。"
+        )
+        tip.setObjectName("Hint")
+        tip.setWordWrap(True)
+        lay.addWidget(tip)
+
+        lay.addWidget(self._hint("Azure 应用（客户端）ID"))
+        self.client_id = QLineEdit()
+        self.client_id.setPlaceholderText("例如 1234abcd-12ab-34cd-56ef-1234567890ab")
+        self.client_id.setText(core.load_config().get("azureClientId", "") or "")
+        lay.addWidget(self.client_id)
+
+        help_row = QHBoxLayout()
+        help = QLabel('没有 ID？<a href="https://learn.microsoft.com/entra/identity-platform/quickstart-register-app">注册一个</a>，'
+                      '记得把「允许公共客户端流程」打开，不需要填回调地址。')
+        help.setObjectName("Hint")
+        help.setOpenExternalLinks(True)
+        help.setWordWrap(True)
+        help_row.addWidget(help)
+        lay.addLayout(help_row)
+
+        self.start_btn = QPushButton("生成验证码")
+        self.start_btn.setObjectName("Primary")
+        self.start_btn.clicked.connect(self.start_login)
+        lay.addWidget(self.start_btn)
+
+        self.code_label = QLabel("")
+        self.code_label.setAlignment(Qt.AlignCenter)
+        self.code_label.setStyleSheet(
+            "font-family: Menlo, monospace; font-size: 30px; letter-spacing: 6px; font-weight: 700;"
+            "color: #d8b4fe; padding: 10px;"
+        )
+        lay.addWidget(self.code_label)
+
+        self.status = QLabel("")
+        self.status.setObjectName("Hint")
+        self.status.setWordWrap(True)
+        self.status.setAlignment(Qt.AlignCenter)
+        lay.addWidget(self.status)
+
+        btns = QHBoxLayout()
+        self.open_btn = QPushButton("打开浏览器")
+        self.open_btn.setObjectName("Ghost")
+        self.open_btn.setEnabled(False)
+        self.open_btn.clicked.connect(self.open_browser)
+        self.copy_btn = QPushButton("复制验证码")
+        self.copy_btn.setObjectName("Ghost")
+        self.copy_btn.setEnabled(False)
+        self.copy_btn.clicked.connect(self.copy_code)
+        close = QPushButton("关闭")
+        close.setObjectName("Ghost")
+        close.clicked.connect(self.reject)
+        btns.addWidget(self.open_btn)
+        btns.addWidget(self.copy_btn)
+        btns.addStretch(1)
+        btns.addWidget(close)
+        lay.addLayout(btns)
+
+    @staticmethod
+    def _hint(text: str) -> QLabel:
+        lab = QLabel(text)
+        lab.setObjectName("Hint")
+        return lab
+
+    # ---- 行为
+    def start_login(self) -> None:
+        from . import auth
+
+        client_id = self.client_id.text().strip()
+        if not client_id:
+            self.status.setText("先填 Azure 应用 ID")
+            return
+        core.save_config({"azureClientId": client_id})
+        try:
+            self.code = auth.start_device_login(client_id)
+        except Exception as exc:  # noqa: BLE001
+            self.status.setText(f"申请失败：{exc}")
+            return
+
+        self.code_label.setText(self.code["user_code"])
+        self.open_btn.setEnabled(True)
+        self.copy_btn.setEnabled(True)
+        self.status.setText("等你在浏览器里完成授权…（这个窗口会自己检测）")
+        self.start_btn.setEnabled(False)
+        self.open_browser()
+
+        if self.timer:
+            self.timer.stop()
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.poll)
+        self.timer.start(max(3, int(self.code.get("interval", 5))) * 1000)
+
+    def open_browser(self) -> None:
+        import webbrowser
+
+        if self.code and self.code.get("verification_uri"):
+            webbrowser.open(self.code["verification_uri"])
+
+    def copy_code(self) -> None:
+        from PySide6.QtWidgets import QApplication
+
+        if self.code:
+            QApplication.clipboard().setText(self.code["user_code"])
+            self.status.setText("验证码已复制，去浏览器粘贴吧")
+
+    def poll(self) -> None:
+        from . import auth
+
+        if not self.code:
+            return
+        try:
+            r = auth.poll_device_login(self.code["device_code"], self.client_id.text().strip())
+        except Exception as exc:  # noqa: BLE001
+            self.status.setText(f"轮询出错：{exc}")
+            return
+
+        status = r.get("status")
+        if status == "pending":
+            return
+        if self.timer:
+            self.timer.stop()
+        if status == "ok":
+            self.status.setText("授权成功，正在获取 Xbox / Minecraft 档案…")
+            try:
+                acc = auth.complete_login(r["tokens"], self.client_id.text().strip())
+            except Exception as exc:  # noqa: BLE001
+                self.status.setText(str(exc))
+                self.start_btn.setEnabled(True)
+                return
+            self.host.toast(f"已登录：{acc['name']}", "ok")
+            self.host.refresh_all()
+            self.accept()
+            return
+        self.status.setText(r.get("error", "登录失败"))
+        self.start_btn.setEnabled(True)

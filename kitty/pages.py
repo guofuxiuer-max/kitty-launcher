@@ -518,7 +518,28 @@ class SettingsPage(QWidget):
         t.setObjectName("Section")
         card.body.addWidget(t)
 
-        card.body.addWidget(self._label("离线玩家名（游戏内显示的名字）"))
+        card.body.addWidget(self._label("账号"))
+        self.account_view = QLabel("离线")
+        self.account_view.setWordWrap(True)
+        card.body.addWidget(self.account_view)
+        acc_row = QHBoxLayout()
+        self.ms_login_btn = QPushButton("微软登录…")
+        self.ms_login_btn.setObjectName("Primary")
+        self.ms_login_btn.setCursor(Qt.PointingHandCursor)
+        self.ms_login_btn.clicked.connect(host.open_microsoft_login)
+        self.ms_refresh_btn = QPushButton("刷新")
+        self.ms_refresh_btn.setObjectName("Ghost")
+        self.ms_refresh_btn.clicked.connect(host.refresh_microsoft)
+        self.ms_logout_btn = QPushButton("退出登录")
+        self.ms_logout_btn.setObjectName("Ghost")
+        self.ms_logout_btn.clicked.connect(host.logout_microsoft)
+        acc_row.addWidget(self.ms_login_btn)
+        acc_row.addWidget(self.ms_refresh_btn)
+        acc_row.addWidget(self.ms_logout_btn)
+        acc_row.addStretch(1)
+        card.body.addLayout(acc_row)
+
+        card.body.addWidget(self._label("离线玩家名（没登录正版时用这个名字）"))
         self.user = QLineEdit()
         card.body.addWidget(self.user)
 
@@ -678,6 +699,29 @@ class SettingsPage(QWidget):
             )
         else:
             self.java_hint.setText("")
+
+        # 账号状态
+        try:
+            from . import auth
+
+            st = auth.status()
+        except Exception:
+            st = {"loggedIn": False}
+        if st.get("loggedIn"):
+            hours = st.get("expiresIn", 0) / 3600
+            self.account_view.setText(
+                f"微软正版：<b>{st['name']}</b>  ·  token 剩余 {hours:.1f} 小时  ·  UUID {st['uuid'][:8]}…"
+            )
+            self.account_view.setStyleSheet("color:#6ee7b7;")
+            self.ms_login_btn.setText("切换账号…")
+            self.ms_refresh_btn.setEnabled(True)
+            self.ms_logout_btn.setEnabled(True)
+        else:
+            self.account_view.setText("离线（只能进离线服；正版服需要微软登录）")
+            self.account_view.setStyleSheet("color:#9498ac;")
+            self.ms_login_btn.setText("微软登录…")
+            self.ms_refresh_btn.setEnabled(False)
+            self.ms_logout_btn.setEnabled(False)
 
         if hasattr(self, "env_view"):
             self.env_view.setPlainText(env_report.render())

@@ -66,31 +66,18 @@ def _install_mirror_hook() -> None:
 
 _install_mirror_hook()
 
-def _data_root() -> Path:
-    """数据目录：开发时用仓库里的 data/，打包成 app 后用系统用户目录。"""
-    env = os.environ.get("KITTY_DATA")
-    if env:
-        return Path(env).expanduser()
-    if getattr(sys, "frozen", False):
-        if sys.platform == "darwin":
-            return Path.home() / "Library" / "Application Support" / "KittyLauncher"
-        if os.name == "nt":
-            return Path(os.environ.get("APPDATA", Path.home())) / "KittyLauncher"
-        return Path.home() / ".local" / "share" / "KittyLauncher"
-    return Path(__file__).resolve().parent.parent / "data"
+from .paths import (  # noqa: E402
+    ACCOUNTS_PATH,
+    APP_DIR,
+    CONFIG_PATH,
+    DATA,
+    INSTANCES_DIR,
+    INSTANCES_JSON,
+    LOGS_DIR,
+    MC_DIR,
+    ROOT,
+)
 
-
-APP_DIR = Path(__file__).resolve().parent
-ROOT = APP_DIR.parent
-DATA = _data_root()
-MC_DIR = DATA / "minecraft"
-INSTANCES_DIR = DATA / "instances"
-LOGS_DIR = DATA / "logs"
-CONFIG_PATH = DATA / "config.json"
-INSTANCES_JSON = DATA / "instances.json"
-
-for d in (DATA, MC_DIR, INSTANCES_DIR, LOGS_DIR):
-    d.mkdir(parents=True, exist_ok=True)
 
 
 
@@ -104,6 +91,7 @@ DEFAULT_CONFIG = {
     "theme": "dark",
     "jvmArgs": "",          # 全局追加 JVM 参数，例：-XX:+UseG1GC
     "mirror": "official",   # official | bmclapi
+    "azureClientId": "",    # 微软登录用的 Azure 应用 ID
 }
 
 # 实例级覆盖，0 / 空串 表示"跟随全局"（PCL 的版本设置就是这么做的）
@@ -701,8 +689,25 @@ def offline_uuid(username: str) -> str:
 
 
 def build_command(inst: dict) -> dict:
+    from . import auth as _auth  # 放在函数内，避免 paths/core 的初始化顺序问题
+
     cfg = load_config()
-    username = (cfg.get("username") or "Steve").strip() or "Steve"
+
+    # 有正版账号就用正版身份，否则退回离线
+    ident = None
+    try:
+        ident = _auth.launch_identity()
+    except Exception as exc:  # noqa: BLE001
+        raise RuntimeError(f"正版登录状态失效，请在设置页重新登录：{exc}") from exc
+
+    if ident:
+        username = ident["username"]
+        player_uuid = ident["uuid"]
+        access_token = ident["token"]
+    else:
+        username = (cfg.get("username") or "Steve").strip() or "Steve"
+        player_uuid = offline_uuid(username)
+        access_token = "0"
     need = version_java_major(inst["versionId"])
     eff = instance_settings(inst)
     java, jinfo = (None, None)
@@ -718,8 +723,8 @@ def build_command(inst: dict) -> dict:
     extra_jvm = eff["jvmArgs"].split() if eff["jvmArgs"] else []
     opts = {
         "username": username,
-        "uuid": offline_uuid(username),
-        "token": "0",
+        "uuid": player_uuid,
+        "token": access_token,
         "executablePath": java,
         "defaultExecutablePath": java,
         "jvmArguments": [f"-Xmx{mem}M", "-Xms512M", "-Dfile.encoding=UTF-8", *extra_jvm],

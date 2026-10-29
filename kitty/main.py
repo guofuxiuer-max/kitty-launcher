@@ -32,7 +32,7 @@ from kitty import core  # noqa: E402
 from kitty import env_report  # noqa: E402
 from kitty import pages as pages_mod  # noqa: E402
 from kitty import theme  # noqa: E402
-from kitty.dialogs import DiagnosisDialog, InstanceSettingsDialog  # noqa: E402
+from kitty.dialogs import DiagnosisDialog, InstanceSettingsDialog, MicrosoftLoginDialog  # noqa: E402
 from kitty.widgets import NavButton, Toast, elide  # noqa: E402
 
 
@@ -266,6 +266,34 @@ class App(QMainWindow):
         if not core.get_instance(name):
             return
         InstanceSettingsDialog(self, name).exec()
+
+    def open_microsoft_login(self) -> None:
+        MicrosoftLoginDialog(self).exec()
+        self.refresh_all()
+
+    def refresh_microsoft(self) -> None:
+        from kitty import auth
+
+        acc = auth.active_account()
+        if not acc:
+            self.toast("还没登录正版账号", "err")
+            return
+        try:
+            auth.refresh_account(acc)
+            self.toast("账号 token 已刷新", "ok")
+        except Exception as exc:  # noqa: BLE001
+            self.toast(f"刷新失败：{exc}", "err")
+        self.refresh_all()
+
+    def logout_microsoft(self) -> None:
+        from kitty import auth
+
+        acc = auth.active_account()
+        if not acc:
+            return
+        auth.remove_account(acc["id"])
+        self.toast("已退出正版账号，下次启动用离线身份", "ok")
+        self.refresh_all()
 
     def diagnose(self, name: str = "") -> None:
         inst = core.get_instance(name) if name else self.selected_instance()

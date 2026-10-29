@@ -28,7 +28,8 @@
 
 - **版本隔离**：每个实例独立 `mods / saves / config / 资源包`，公共库和资源只存一份
 - **一键装版本**：原版（正式版 / 快照全量列表）、Fabric、Forge、Quilt
-- **离线登录**：填个名字就能进游戏，不用正版账号（也留了微软登录的扩展位）
+- **微软正版登录**：设备码流程，浏览器输 8 位码即可；token 自动续期，可进正版服
+- **离线登录**：不登录也能玩，填个名字就行
 - **自动挑 Java**：扫本机所有 JDK，按目标版本要求选够用且最新的那个；版本不够会提示
 - **模组市场**：内置 Modrinth 搜索，按当前实例的 MC 版本 + 加载器过滤，一键下载到 `mods/`
 - **实时日志**：游戏 stdout 实时进日志页，同时落盘到 `data/logs/`
@@ -52,6 +53,29 @@
 | 启动 Fabric | `Loading Minecraft 26.3 with Fabric Loader 0.20.1` |
 | Modrinth 装 Sodium | `sodium-fabric-0.9.3-beta.1+mc26.3.jar`，启动日志确认 `- sodium 0.9.3-beta.1+mc26.3` 已加载 |
 
+## 微软正版登录
+
+PCL / HMCL 这类启动器都自带一个 Azure 应用 ID，**本项目不内置**（拿别人的 ID 属于滥用，
+账号被限流会连累所有人）。所以要玩正版服，主人得花 3 分钟注册一个自己的：
+
+1. 打开 [Azure 门户 → 应用注册](https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade)
+   → 「新注册」
+2. 名称随便填（例如 `KittyLauncher`），**受支持的账户类型**选
+   「仅此组织目录中的账户」或「任何组织目录中的账户和个人 Microsoft 账户」都行
+3. 注册完进 **身份验证（Authentication）** → 拉到底 → **允许公共客户端流** 选「是」→ 保存
+4. 回到「概述」，复制 **应用程序(客户端) ID**（形如 `1234abcd-12ab-...`）
+5. 启动器：设置 → 微软登录 → 粘贴这个 ID → **生成验证码**
+6. 浏览器会打开 `microsoft.com/link`，输入那 8 位码，选自己的 Xbox 档案 → 启动器自动完成登录
+
+![微软登录](screenshots/dialog-ms-login.png)
+
+登录后：
+
+- 启动命令里的 `--username / --uuid / --accessToken` 换成真实身份，能进正版服
+- token 存在 `data/accounts.json`（权限 `600`，只有你自己能读），Minecraft token 约 24 小时过期，
+  **启动前会自动用 refresh_token 续期**，失败会明确提示「请重新登录」
+- 「退出登录」只删本地记录，不影响你的微软账号
+
 ## 和 Windows 上的 PCL2 差在哪
 
 PCL2 是 Windows 专用的闭源启动器，这里按功能逐条对照（✅ 有 / ⚠️ 部分 / ❌ 暂无）：
@@ -67,7 +91,7 @@ PCL2 是 Windows 专用的闭源启动器，这里按功能逐条对照（✅ �
 | CurseForge 整合包导入 | ✅ | ❌ |
 | 实例导出 / 导入 | ✅ | ✅ |
 | 离线登录 | ✅ | ✅ |
-| 微软正版登录 | ✅ | ❌（路线图第 1 项） |
+| 微软正版登录 | ✅ | ✅（设备码，需自备 Azure client_id） |
 | 外置登录（authlib-injector） | ✅ | ❌ |
 | Java 自动检测 | ✅ | ✅ |
 | 自动下载 JRE | ✅ | ✅（Mojang 官方 JRE） |
@@ -76,7 +100,7 @@ PCL2 是 Windows 专用的闭源启动器，这里按功能逐条对照（✅ �
 | CurseForge 模组源 | ✅ | ❌ |
 | 日志 / 崩溃分析 | ✅ | ✅（内置规则库） |
 | 下载源镜像 | ✅ | ✅（BMCLAPI） |
-| 多账号档案 | ✅ | ❌ |
+| 多账号档案 | ✅ | ❌（当前单账号） |
 | 皮肤预览 / 换肤 | ✅ | ❌ |
 | 联机（NAT 穿透） | ✅ | ❌ |
 | 多语言（中/英切换） | ✅ | ❌ |
@@ -198,10 +222,10 @@ kitty-launcher/
 - [x] 日志崩溃诊断（15 条规则）
 - [x] 下载源切换（BMCLAPI）
 - [x] 实例导出 / 导入（zip）
+- [x] 微软正版登录（设备码 + 自动续期）
 
 接下来（按优先级）：
 
-- [ ] 微软正版登录（设备码 OAuth + Xbox Live + Minecraft Services，底层库已具备）
 - [ ] NeoForge / OptiFine 安装
 - [ ] CurseForge 作为第二个模组源
 - [ ] 多账号档案（正版 / 离线 / 外置登录并存）

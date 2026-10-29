@@ -73,6 +73,16 @@ def collect() -> dict:
         info["qt"] = f"未安装（{type(exc).__name__}）"
 
     try:
+        from kitty import auth
+
+        st = auth.status()
+        info["account"] = (
+            f"微软 {st['name']}" if st.get("loggedIn") else "离线（未登录正版）"
+        )
+    except Exception:
+        info["account"] = "未知"
+
+    try:
         from kitty import core
 
         info["core_ok"] = True
@@ -154,6 +164,7 @@ def render(info: dict | None = None, color: bool = False) -> str:
         ("数据目录", info["data_dir"] or "（未初始化）"),
         ("游戏目录", info["game_dir"] or "（未初始化）"),
         ("Java", "；".join(j["label"] for j in info["java"]) or "未找到"),
+        ("账号", info.get("account", "未知")),
         ("实例", f"{len(info['instances'])} 个" + (f"：{', '.join(info['instances'])}" if info["instances"] else "")),
     ]
     width = max(_visual_len(k) for k, _ in rows) + 2
