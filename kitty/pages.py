@@ -953,10 +953,53 @@ class UsersPage(QWidget):
         if path:
             subprocess.Popen(["open", "-R", str(path)])
 
-    def load_skin(self, who: str = "") -> None:
+    def load_skin(self, who: str = "", network: bool = False) -> None:
         from . import skin
 
-        info = skin.resolve(who)
+        info = skin.resolve(who, allow_network=network)
+        self._apply_skin(info)
+        if info.get("pending"):
+            self._fetch_skin_async(who)
+
+    def _fetch_skin_async(self, who: str) -> None:
+        import threading
+
+        from . import skin
+
+        from PySide6.QtCore import QTimer
+
+        if getattr(self, "_skin_busy", False):
+            return
+        self._skin_busy = True
+        box: dict = {}
+
+        def work():
+            try:
+                box["info"] = skin.resolve(who, allow_network=True)
+            except Exception as exc:  # noqa: BLE001
+                box["error"] = exc
+            box["done"] = True
+
+        threading.Thread(target=work, name="skin-fetch", daemon=True).start()
+
+        poll = QTimer(self)
+        poll.setInterval(250)
+
+        def check():
+            if not box.get("done"):
+                return
+            poll.stop()
+            self._skin_busy = False
+            if "info" in box:
+                self._apply_skin(box["info"])
+
+        poll.timeout.connect(check)
+        poll.start()
+        self._skin_poll = poll
+
+    def _apply_skin(self, info: dict) -> None:
+        from . import skin
+
         self._info = info
         self.view3d.set_skin(info["path"], slim=(info.get("model") == "slim"))
         head = skin.head(info["path"], 88)

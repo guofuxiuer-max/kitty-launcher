@@ -30,6 +30,7 @@ from PySide6.QtWidgets import (  # noqa: E402
 
 from kitty import core  # noqa: E402
 from kitty import env_report  # noqa: E402
+from kitty.splash import show_splash  # noqa: E402
 from kitty import pages as pages_mod  # noqa: E402
 from kitty import theme  # noqa: E402
 from kitty.dialogs import (  # noqa: E402
@@ -494,6 +495,11 @@ def screenshot(outdir: str) -> int:
         win.go(key)
         # 明确切栈 + 强制重绘，否则 offscreen 下可能抓到上一页的缓存
         win.stack.setCurrentWidget(win.pages[key])
+        if key == "users":
+            try:
+                win.pages["users"].load_skin(network=True)   # 截图等得起，直接同步拉
+            except Exception:
+                pass
         if key == "mods":
             try:
                 win.pages["mods"].search.setText("sodium")
@@ -522,7 +528,8 @@ def main() -> int:
             "  python -m kitty.main                 启动图形界面\n"
             "  python -m kitty.main --screenshot DIR  无头渲染五个页面截图\n"
             "  python -m kitty.main --env            打印环境自检（贴 issue 用）\n"
-            "  python -m kitty.main --help           显示这段帮助\n\n"
+            "  python -m kitty.main --help           显示这段帮助\n"
+            "  python -m kitty.main --no-splash      跳过开场闪屏\n\n"
             "环境变量:\n"
             "  KITTY_DATA   自定义数据目录（默认 ./data，打包后在用户目录）\n"
             "  KITTY_PYTHON run.sh 用的解释器\n"
@@ -537,8 +544,18 @@ def main() -> int:
     app.setApplicationName("KittyLauncher")
     app.setApplicationDisplayName("KittyLauncher")
     app.setWindowIcon(app_icon())
+
+    # 闪屏先出来，把 App 初始化（读配置 / 扫 Java / 扫实例）这几百毫秒盖住
+    no_splash = "--no-splash" in sys.argv or os.environ.get("KITTY_NO_SPLASH") == "1"
+    splash = None if no_splash else show_splash()
+
     win = App()
-    win.show()
+    if splash is not None:
+        splash.finished.connect(win.show)
+        splash.finished.connect(win.raise_)
+        splash.finish()          # 进度条走完立刻淡出
+    else:
+        win.show()
 
     # 启动时打一份环境自检：终端里能看，日志页也留一行摘要
     try:

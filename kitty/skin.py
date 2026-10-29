@@ -122,8 +122,8 @@ def placeholder_skin() -> Path:
     return path
 
 
-def resolve(name: str = "") -> dict:
-    """找一张能用的皮肤，返回 {path, source, name, uuid, model, error}。"""
+def cached_skin(who: str = "") -> Path | None:
+    """只在缓存里找，不联网。启动时先用它，网络在后台补。"""
     from . import auth, core
 
     acc = None
@@ -131,6 +131,45 @@ def resolve(name: str = "") -> dict:
         acc = auth.active_account()
     except Exception:
         acc = None
+    keys = []
+    if acc:
+        for s in acc.get("skins") or []:
+            if s.get("url"):
+                keys.append(s["url"])
+        if acc.get("name"):
+            keys.append(acc["name"])
+    name = who or (acc.get("name") if acc else "") or core.load_config().get("username") or ""
+    if name:
+        keys.append(name)
+    for k in keys:
+        f = _cache_file(k)
+        if f.exists() and f.stat().st_size > 100:
+            return f
+    return None
+
+
+def resolve(name: str = "", allow_network: bool = True) -> dict:
+    """找一张能用的皮肤，返回 {path, source, name, uuid, model, error, pending}。"""
+    from . import auth, core
+
+    acc = None
+    try:
+        acc = auth.active_account()
+    except Exception:
+        acc = None
+
+    if not allow_network:
+        cached = cached_skin(name)
+        if cached:
+            return {
+                "path": cached, "source": "本地缓存", "name": (acc or {}).get("name", "") or name,
+                "uuid": (acc or {}).get("uuid", ""), "model": "classic", "error": "", "pending": False,
+            }
+        who = name or (acc.get("name") if acc else "") or core.load_config().get("username") or ""
+        return {
+            "path": placeholder_skin(), "source": "正在获取皮肤…", "name": who,
+            "uuid": (acc or {}).get("uuid", ""), "model": "classic", "error": "", "pending": True,
+        }
 
     # 1) 微软账号档案里直接带了皮肤 URL
     if acc and not name:
@@ -162,7 +201,7 @@ def resolve(name: str = "") -> dict:
             if target.exists():
                 return {
                     "path": target, "source": "Mojang 公开档案", "name": who,
-                    "uuid": uuid, "model": model, "error": "",
+                    "uuid": uuid, "model": model, "error": "", "pending": False,
                 }
 
     # 3) 兜底
@@ -173,6 +212,7 @@ def resolve(name: str = "") -> dict:
         "uuid": uuid or "",
         "model": "classic",
         "error": "" if not who else f"没找到「{who}」的皮肤（离线名或网络不通）",
+        "pending": False,
     }
 
 

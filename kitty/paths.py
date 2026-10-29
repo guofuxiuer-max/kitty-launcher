@@ -32,3 +32,21 @@ ACCOUNTS_PATH = DATA / "accounts.json"
 
 for _d in (DATA, MC_DIR, INSTANCES_DIR, LOGS_DIR):
     _d.mkdir(parents=True, exist_ok=True)
+
+
+VERSION = "1.0.0"
+
+
+def asset_path(name: str):
+    """assets/ 里的资源，兼容源码运行与 PyInstaller 打包。"""
+    import sys
+
+    candidates = []
+    meipass = getattr(sys, "_MEIPASS", None)
+    if meipass:
+        candidates.append(Path(meipass) / "assets" / name)
+    candidates.append(APP_DIR.parent / "assets" / name)
+    for c in candidates:
+        if c.exists():
+            return c
+    return None
