@@ -32,7 +32,12 @@ from kitty import core  # noqa: E402
 from kitty import env_report  # noqa: E402
 from kitty import pages as pages_mod  # noqa: E402
 from kitty import theme  # noqa: E402
-from kitty.dialogs import DiagnosisDialog, InstanceSettingsDialog, MicrosoftLoginDialog  # noqa: E402
+from kitty.dialogs import (  # noqa: E402
+    DiagnosisDialog,
+    InstanceSettingsDialog,
+    MicrosoftLoginDialog,
+    SkinPreviewDialog,
+)
 from kitty.widgets import NavButton, Toast, elide  # noqa: E402
 
 
@@ -275,6 +280,9 @@ class App(QMainWindow):
     def open_microsoft_login(self) -> None:
         MicrosoftLoginDialog(self).exec()
         self.refresh_all()
+
+    def open_skin_preview(self) -> None:
+        SkinPreviewDialog(self).exec()
 
     def refresh_microsoft(self) -> None:
         from kitty import auth

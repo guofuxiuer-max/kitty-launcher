@@ -407,3 +407,149 @@ class MicrosoftLoginDialog(QDialog):
             return
         self.status.setText(r.get("error", "登录失败"))
         self.start_btn.setEnabled(True)
+
+
+class SkinPreviewDialog(QDialog):
+    """皮肤预览：左边正面站姿，右边头像 + 档案信息。"""
+
+    def __init__(self, host, parent=None):
+        super().__init__(parent or host)
+        self.host = host
+        self.setWindowTitle("皮肤预览")
+        self.resize(660, 520)
+        self.info: dict = {}
+
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(22, 20, 22, 18)
+        lay.setSpacing(20)
+
+        # ---- 左：站姿
+        left = QVBoxLayout()
+        left.setSpacing(8)
+        self.body_label = QLabel("加载中…")
+        self.body_label.setAlignment(Qt.AlignCenter)
+        self.body_label.setFixedSize(220, 360)
+        self.body_label.setStyleSheet(
+            "background: qlineargradient(x1:0,y1:0,x2:0,y2:1,"
+            "stop:0 rgba(168,85,247,0.16), stop:1 rgba(0,0,0,0.25));"
+            "border: 1px solid #2b3040; border-radius: 16px;"
+        )
+        left.addWidget(self.body_label, 0, Qt.AlignHCenter)
+        left.addStretch(1)
+        lay.addLayout(left)
+
+        # ---- 右：信息
+        right = QVBoxLayout()
+        right.setSpacing(10)
+
+        head_row = QHBoxLayout()
+        self.head_label = QLabel("")
+        self.head_label.setFixedSize(88, 88)
+        self.head_label.setStyleSheet("border-radius: 14px; background: rgba(255,255,255,0.04);")
+        self.head_label.setAlignment(Qt.AlignCenter)
+        head_row.addWidget(self.head_label)
+
+        name_col = QVBoxLayout()
+        self.name_label = QLabel("")
+        self.name_label.setStyleSheet("font-size:19px; font-weight:600;")
+        self.uuid_label = QLabel("")
+        self.uuid_label.setObjectName("Hint")
+        self.uuid_label.setWordWrap(True)
+        name_col.addWidget(self.name_label)
+        name_col.addWidget(self.uuid_label)
+        name_col.addStretch(1)
+        head_row.addLayout(name_col, 1)
+        right.addLayout(head_row)
+
+        self.source_label = QLabel("")
+        self.source_label.setObjectName("Hint")
+        self.source_label.setWordWrap(True)
+        right.addWidget(self.source_label)
+
+        self.path_label = QLabel("")
+        self.path_label.setObjectName("Hint")
+        self.path_label.setWordWrap(True)
+        right.addWidget(self.path_label)
+
+        right.addWidget(self._hint("想看看别人？输入玩家名（正版名）"))
+        row = QHBoxLayout()
+        self.name_edit = QLineEdit()
+        self.name_edit.setPlaceholderText("例如 Notch / jeb_")
+        self.name_edit.returnPressed.connect(self.reload_skin)
+        go = QPushButton("预览")
+        go.setObjectName("Primary")
+        go.clicked.connect(self.reload_skin)
+        row.addWidget(self.name_edit, 1)
+        row.addWidget(go)
+        right.addLayout(row)
+
+        right.addStretch(1)
+        btns = QHBoxLayout()
+        self.open_btn = QPushButton("打开皮肤文件")
+        self.open_btn.setObjectName("Ghost")
+        self.open_btn.clicked.connect(self.open_file)
+        copy = QPushButton("复制文件路径")
+        copy.setObjectName("Ghost")
+        copy.clicked.connect(self.copy_path)
+        close = QPushButton("关闭")
+        close.setObjectName("Ghost")
+        close.clicked.connect(self.accept)
+        btns.addWidget(self.open_btn)
+        btns.addWidget(copy)
+        btns.addStretch(1)
+        btns.addWidget(close)
+        right.addLayout(btns)
+        lay.addLayout(right, 1)
+
+        self.reload_skin()
+
+    @staticmethod
+    def _hint(text: str) -> QLabel:
+        lab = QLabel(text)
+        lab.setObjectName("Hint")
+        return lab
+
+    def reload_skin(self) -> None:
+        from PySide6.QtWidgets import QApplication
+
+        from . import skin
+
+        who = self.name_edit.text().strip()
+        self.name_label.setText("加载中…")
+        self.source_label.setText("正在查询皮肤…")
+        self.path_label.setText("")
+        QApplication.processEvents()
+
+        info = skin.resolve(who)
+        self.info = info
+        body = skin.body(info["path"], 10)
+        head = skin.head(info["path"], 80)
+        if body.isNull():
+            self.body_label.setText("这张皮肤读不出来")
+        else:
+            self.body_label.setPixmap(body)
+        if not head.isNull():
+            self.head_label.setPixmap(head)
+
+        self.name_label.setText(info.get("name") or "-")
+        self.uuid_label.setText(("UUID " + info["uuid"]) if info.get("uuid") else "无 uuid（离线名）")
+        model = "经典（4px 手臂）" if info.get("model") != "slim" else "纤细（3px 手臂）"
+        self.source_label.setText(f"来源：{info.get('source', '')} · 模型：{model}"
+                                  + (f"\n{info['error']}" if info.get("error") else ""))
+        self.path_label.setText(f"文件：{info['path']}")
+        self.open_btn.setEnabled(bool(info.get("path")))
+
+    def open_file(self) -> None:
+        import subprocess
+
+        path = self.info.get("path")
+        if path:
+            subprocess.Popen(["open", "-R", str(path)])
+
+    def copy_path(self) -> None:
+        from PySide6.QtWidgets import QApplication
+
+        path = self.info.get("path")
+        if path:
+            QApplication.clipboard().setText(str(path))
+            self.host.toast("皮肤文件路径已复制", "ok")
