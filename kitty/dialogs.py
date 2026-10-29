@@ -423,18 +423,35 @@ class SkinPreviewDialog(QDialog):
         lay.setContentsMargins(22, 20, 22, 18)
         lay.setSpacing(20)
 
-        # ---- 左：站姿
+        # ---- 左：3D 视图
+        from .skin3d import Skin3DView
+
         left = QVBoxLayout()
         left.setSpacing(8)
-        self.body_label = QLabel("加载中…")
-        self.body_label.setAlignment(Qt.AlignCenter)
-        self.body_label.setFixedSize(220, 360)
-        self.body_label.setStyleSheet(
+        self.view3d = Skin3DView()
+        self.view3d.setFixedSize(250, 380)
+        self.view3d.setStyleSheet(
             "background: qlineargradient(x1:0,y1:0,x2:0,y2:1,"
             "stop:0 rgba(168,85,247,0.16), stop:1 rgba(0,0,0,0.25));"
             "border: 1px solid #2b3040; border-radius: 16px;"
         )
-        left.addWidget(self.body_label, 0, Qt.AlignHCenter)
+        left.addWidget(self.view3d, 0, Qt.AlignHCenter)
+
+        hint = QLabel("拖动旋转 · 滚轮缩放 · 双击暂停/继续自转")
+        hint.setObjectName("Hint")
+        hint.setAlignment(Qt.AlignCenter)
+        left.addWidget(hint)
+
+        view_row = QHBoxLayout()
+        self.spin_btn = QPushButton("暂停自转")
+        self.spin_btn.setObjectName("Tiny")
+        self.spin_btn.clicked.connect(self.toggle_spin)
+        reset_btn = QPushButton("重置视角")
+        reset_btn.setObjectName("Tiny")
+        reset_btn.clicked.connect(lambda: self.view3d.reset_view())
+        view_row.addWidget(self.spin_btn)
+        view_row.addWidget(reset_btn)
+        left.addLayout(view_row)
         left.addStretch(1)
         lay.addLayout(left)
 
@@ -522,12 +539,8 @@ class SkinPreviewDialog(QDialog):
 
         info = skin.resolve(who)
         self.info = info
-        body = skin.body(info["path"], 10, slim=(info.get("model") == "slim"))
+        self.view3d.set_skin(info["path"], slim=(info.get("model") == "slim"))
         head = skin.head(info["path"], 80)
-        if body.isNull():
-            self.body_label.setText("这张皮肤读不出来")
-        else:
-            self.body_label.setPixmap(body)
         if not head.isNull():
             self.head_label.setPixmap(head)
 
@@ -538,6 +551,10 @@ class SkinPreviewDialog(QDialog):
                                   + (f"\n{info['error']}" if info.get("error") else ""))
         self.path_label.setText(f"文件：{info['path']}")
         self.open_btn.setEnabled(bool(info.get("path")))
+
+    def toggle_spin(self) -> None:
+        running = self.view3d.toggle_auto()
+        self.spin_btn.setText("暂停自转" if running else "继续自转")
 
     def open_file(self) -> None:
         import subprocess
