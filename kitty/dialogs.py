@@ -522,7 +522,7 @@ class SkinPreviewDialog(QDialog):
 
         info = skin.resolve(who)
         self.info = info
-        body = skin.body(info["path"], 10)
+        body = skin.body(info["path"], 10, slim=(info.get("model") == "slim"))
         head = skin.head(info["path"], 80)
         if body.isNull():
             self.body_label.setText("这张皮肤读不出来")

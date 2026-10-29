@@ -201,12 +201,11 @@ def head(path: Path | str, size: int = 96, hat: bool = True) -> QPixmap:
     return QPixmap.fromImage(out.scaled(size, size, Qt.KeepAspectRatio, Qt.FastTransformation))
 
 
-def body(path: Path | str, scale: int = 8) -> QPixmap:
+def body(path: Path | str, scale: int = 8, slim: bool = False) -> QPixmap:
     img = QImage(str(path))
     if img.isNull():
         return QPixmap()
     legacy = img.height() < 64
-    slim = False
 
     canvas = QImage(16 * scale, 32 * scale, QImage.Format_ARGB32)
     canvas.fill(Qt.transparent)
@@ -230,18 +229,19 @@ def body(path: Path | str, scale: int = 8) -> QPixmap:
         blit(20, 36, 8, 12, 4, 8)
 
     arm_w = 3 if slim else 4
+    # 手臂贴着身体两侧：右臂右边缘贴 4，左臂左边缘贴 12
+    r_dx = 4 - arm_w
+    l_dx = 12
     # 右臂（画面左侧）+ 袖子
-    blit(44, 20, arm_w, 12, 0, 8)
+    blit(44, 20, arm_w, 12, r_dx, 8)
     if not legacy:
-        blit(44, 36, arm_w, 12, 0, 8)
+        blit(44, 36, arm_w, 12, r_dx, 8)
     # 左臂（画面右侧）：legacy 镜像右臂
     if legacy:
-        mirror(44, 20, arm_w, 12, 16 - arm_w, 8)
+        mirror(44, 20, arm_w, 12, l_dx, 8)
     else:
-        blit(36, 52, arm_w, 12, 16 - arm_w, 8)
-        blit(52, 52, arm_w, 12, 16 - arm_w, 8)
-        p2 = _crop(img, 52, 52, arm_w, 12)
-        p.drawImage(QRect((16 - arm_w) * scale, 8 * scale, arm_w * scale, 12 * scale), p2)
+        blit(36, 52, arm_w, 12, l_dx, 8)
+        blit(52, 52, arm_w, 12, l_dx, 8)
 
     # 右腿 + 裤腿
     blit(4, 20, 4, 12, 4, 20)
