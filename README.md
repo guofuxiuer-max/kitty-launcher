@@ -33,12 +33,12 @@
 
 | 版本 | 尺寸 | 时长 | 文件 |
 |---|---|---|---|
-| 竖屏（抖音 / 小红书） | 1080×1920 | 65 秒 | [`docs/KittyLauncher-promo.mp4`](docs/KittyLauncher-promo.mp4) |
-| 横屏（B 站 / YouTube） | 1920×1080 | 65 秒 | [`docs/KittyLauncher-promo-16x9.mp4`](docs/KittyLauncher-promo-16x9.mp4) |
+| 竖屏（抖音 / 小红书） | 1080×1920 | 59 秒 | [`docs/KittyLauncher-promo.mp4`](docs/KittyLauncher-promo.mp4) |
+| 横屏（B 站 / YouTube） | 1920×1080 | 59 秒 | [`docs/KittyLauncher-promo-16x9.mp4`](docs/KittyLauncher-promo-16x9.mp4) |
 
 [![演示视频](docs/cover.png)](docs/KittyLauncher-promo-16x9.mp4)
 
-- 旁白用神经网络语音（zh-CN-Xiaoxiao，语速 -8%，基频 300 Hz ≈ 参考音色），逐句 ASR 校验过可懂度
+- 旁白用神经网络语音（zh-CN-Xiaoxiao，语速 +2%，基频 300 Hz ≈ 参考音色），逐句 ASR 校验过可懂度
 - 弹幕、字幕、纯音乐 BGM 全部代码生成，无版权风险
 - 重新出片：`./.venv/bin/python tools/make_promo_video.py [--horizontal] [--stills]`
 
