@@ -8,9 +8,11 @@
 ![platform](https://img.shields.io/badge/platform-macOS%2011%2B-black)
 ![status](https://img.shields.io/badge/status-beta-orange)
 
-> 一个 **macOS 专用**的 PCL 风格 Minecraft 启动器，Python + PySide6 写的原生桌面程序。
+> **我的世界启动器 · 我的世界mac · pclmac** —— macOS 专用的 PCL 风格 Minecraft 启动器（PCL-style launcher for macOS），Python + PySide6 写的原生桌面程序。
 > 因为 PCL2 只跑在 Windows 上，Mac 用户一直缺一个长得像它、用起来也像它的启动器，所以有了这个。
 > **只做 macOS** —— Windows / Linux 不做适配，也不接受相关 PR。
+
+<sub>关键词：我的世界启动器 · 我的世界 mac 启动器 · pclmac · pcl for mac · PCL 替代品 · Minecraft launcher macOS · PCL-style launcher · Fabric / Forge / Quilt · Modrinth</sub>
 
 ## 项目状态（先看这里）
 
