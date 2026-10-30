@@ -29,6 +29,13 @@
 报 bug 请附 `./run.sh --env`，见「出问题怎么报 issue」。
 
 
+## 演示视频（63 秒，抖音竖屏）
+
+[![演示视频](docs/cover.png)](docs/KittyLauncher-promo.mp4)
+
+> 点封面播放 / 下载：[`docs/KittyLauncher-promo.mp4`](docs/KittyLauncher-promo.mp4)
+> 1080×1920 · 旁白配音 · 弹幕 · 纯音乐 BGM；生成脚本在 [`tools/make_promo_video.py`](tools/make_promo_video.py)（`./.venv/bin/python tools/make_promo_video.py` 可重新渲染）
+
 ![启动页](screenshots/launch.png)
 
 > 界面：左侧导航 **启动 / 下载 / 模组 / 设置 / 日志 / 用户**，实例卡片式管理，紫粉渐变 + 深浅双主题。

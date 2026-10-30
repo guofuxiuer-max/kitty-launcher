@@ -1,0 +1,4 @@
+# 生成演示视频用的依赖（不是启动器运行依赖）
+numpy>=1.26
+pillow>=10
+imageio-ffmpeg>=0.5
