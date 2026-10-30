@@ -28,13 +28,13 @@ FPS = 30
 
 # 版面参数：竖屏（抖音）/ 横屏（B 站、YouTube）各一套
 LAY = {
-    "panel_w": 980,
-    "panel_c": (540, 985),
+    "panel_w": 1024,
+    "panel_c": (540, 905),
     "head_y": 205,
     "sub_y": 292,
     "dm_top": 378,
     "dm_lane": 68,
-    "pill_y": 1450,
+    "pill_y": 1420,
     "open_logo_y": 560,
     "open_title_y": 860,
     "open_sub_y": 980,
@@ -56,13 +56,13 @@ HORIZONTAL_LAY = {
     "align": "left",
     "text_x": 84,
     "pill_x": 420,
-    "panel_w": 1000,
-    "panel_c": (1330, 600),
+    "panel_w": 1030,
+    "panel_c": (1320, 560),
     "head_y": 300,
     "sub_y": 396,
     "dm_top": 150,
     "dm_lane": 60,
-    "pill_y": 930,
+    "pill_y": 960,
     "open_logo_y": 360,
     "open_title_y": 600,
     "open_sub_y": 730,
@@ -201,19 +201,13 @@ def pill(canvas: Image.Image, y: int, text: str, size: int = 40, alpha: int = 23
     line_h = size + 14
     box_h = line_h * len(lines) + 34
     box_w = max(ImageDraw.Draw(canvas).textlength(l, font=f) for l in lines) + 60
-    if LAY.get("align") == "left":
-        x0, y0 = LAY.get("pill_x", 80), y
-    else:
-        x0, y0 = (W - box_w) // 2, y
+    x0, y0 = (W - box_w) // 2, y
     layer = Image.new("RGBA", (int(box_w), int(box_h)), (0, 0, 0, 0))
     ImageDraw.Draw(layer).rounded_rectangle([0, 0, box_w - 1, box_h - 1], 26, fill=(12, 13, 18, 200),
                                             outline=(168, 85, 247, 90), width=2)
     canvas.alpha_composite(layer, (int(x0), int(y0)))
     for i, line in enumerate(lines):
-        if LAY.get("align") == "left":
-            d.text((x0 + 30, y0 + 17 + i * line_h), line, font=f, fill=(240, 240, 245, alpha), anchor="la")
-        else:
-            d.text((W // 2, y0 + 17 + i * line_h), line, font=f, fill=(240, 240, 245, alpha), anchor="ma")
+        d.text((W // 2, y0 + 17 + i * line_h), line, font=f, fill=(240, 240, 245, alpha), anchor="ma")
 
 
 class Danmaku:
@@ -602,7 +596,8 @@ DRAW = {
     "mirror": shot_mirror, "end": shot_end,
 }
 
-DANMAKU = [
+DANMAKU: list[tuple[float, str, int]] = []
+_OLD_DANMAKU = [
     (0.8, "PCL 的味道！", 0), (1.6, "Mac 终于有了", 1), (2.4, "这也太丝滑了", 2),
     (3.2, "macOS 狂喜", 3), (4.4, "前面那个说 PCL 的+1", 0),
     (6.0, "确实是刚需", 1), (7.2, "求 Windows 版（不", 2), (8.4, "猫咪启动器是吧", 3),
@@ -671,7 +666,8 @@ def main() -> int:
         # 画中画底部字幕
         pill(canvas, LAY["pill_y"], seg["sub"], 40)
 
-        dm.draw(canvas, t, top=LAY["dm_top"], lane_h=LAY["dm_lane"])
+        if DANMAKU:
+            dm.draw(canvas, t, top=LAY["dm_top"], lane_h=LAY["dm_lane"])
         brand(canvas)
 
         # 镜头切换时 0.22s 的黑场过渡

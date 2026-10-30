@@ -39,7 +39,7 @@
 [![演示视频](docs/cover.png)](docs/KittyLauncher-promo-16x9.mp4)
 
 - 旁白用神经网络语音（zh-CN-Xiaoxiao，语速 +2%，基频 300 Hz ≈ 参考音色），逐句 ASR 校验过可懂度
-- 弹幕、字幕、纯音乐 BGM 全部代码生成，无版权风险
+- 字幕居中、纯音乐 BGM，全部代码生成，无版权风险
 - 重新出片：`./.venv/bin/python tools/make_promo_video.py [--horizontal] [--stills]`
 
 ![启动页](screenshots/launch.png)
