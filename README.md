@@ -29,12 +29,18 @@
 报 bug 请附 `./run.sh --env`，见「出问题怎么报 issue」。
 
 
-## 演示视频（63 秒，抖音竖屏）
+## 演示视频
 
-[![演示视频](docs/cover.png)](docs/KittyLauncher-promo.mp4)
+| 版本 | 尺寸 | 时长 | 文件 |
+|---|---|---|---|
+| 竖屏（抖音 / 小红书） | 1080×1920 | 47 秒 | [`docs/KittyLauncher-promo.mp4`](docs/KittyLauncher-promo.mp4) |
+| 横屏（B 站 / YouTube） | 1920×1080 | 47 秒 | [`docs/KittyLauncher-promo-16x9.mp4`](docs/KittyLauncher-promo-16x9.mp4) |
 
-> 点封面播放 / 下载：[`docs/KittyLauncher-promo.mp4`](docs/KittyLauncher-promo.mp4)
-> 1080×1920 · 旁白配音 · 弹幕 · 纯音乐 BGM；生成脚本在 [`tools/make_promo_video.py`](tools/make_promo_video.py)（`./.venv/bin/python tools/make_promo_video.py` 可重新渲染）
+[![演示视频](docs/cover.png)](docs/KittyLauncher-promo-16x9.mp4)
+
+- 旁白是**零样本音色克隆**（F5-TTS + 参考音色），不是机器播报腔
+- 弹幕、字幕、纯音乐 BGM 全部代码生成，无版权风险
+- 重新出片：`./.venv/bin/python tools/make_promo_video.py [--horizontal] [--stills]`
 
 ![启动页](screenshots/launch.png)
 

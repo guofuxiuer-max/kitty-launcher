@@ -26,6 +26,60 @@ TMP = Path("/tmp/promo")
 W, H = 1080, 1920
 FPS = 30
 
+# 版面参数：竖屏（抖音）/ 横屏（B 站、YouTube）各一套
+LAY = {
+    "panel_w": 980,
+    "panel_c": (540, 985),
+    "head_y": 205,
+    "sub_y": 292,
+    "dm_top": 378,
+    "dm_lane": 68,
+    "pill_y": 1450,
+    "open_logo_y": 560,
+    "open_title_y": 860,
+    "open_sub_y": 980,
+    "pain_y": 780,
+    "pain_sub_y": 920,
+    "skin_frame": (110, 500, 970, 1290),
+    "skin_img_y": 520,
+    "skin_tip_y": 1330,
+    "end_logo_y": 520,
+    "end_title_y": 830,
+    "end_sub_y": 930,
+    "end_url_y": 1050,
+    "end_mit_y": 1110,
+    "brand_y": 56,
+    "dm_size": 38,
+}
+
+HORIZONTAL_LAY = {
+    "align": "left",
+    "text_x": 84,
+    "pill_x": 420,
+    "panel_w": 1000,
+    "panel_c": (1330, 600),
+    "head_y": 300,
+    "sub_y": 396,
+    "dm_top": 150,
+    "dm_lane": 60,
+    "pill_y": 930,
+    "open_logo_y": 360,
+    "open_title_y": 600,
+    "open_sub_y": 730,
+    "pain_y": 520,
+    "pain_sub_y": 640,
+    "skin_frame": (900, 120, 1860, 900),
+    "skin_img_y": 140,
+    "skin_tip_y": 930,
+    "end_logo_y": 240,
+    "end_title_y": 500,
+    "end_sub_y": 590,
+    "end_url_y": 690,
+    "end_mit_y": 750,
+    "brand_y": 40,
+    "dm_size": 34,
+}
+
 FONT_CN = "/System/Library/Fonts/Hiragino Sans GB.ttc"
 
 
@@ -125,6 +179,11 @@ def text_center(canvas: Image.Image, y: int, text: str, size: int, color=(255, 2
         d.text((W // 2, y), text, font=f, fill=color + (alpha,), anchor="ma")
 
 
+def text_left(canvas: Image.Image, x: int, y: int, text: str, size: int, color=(255, 255, 255), bold=True) -> None:
+    d = ImageDraw.Draw(canvas)
+    d.text((x, y), text, font=font(size, bold), fill=color + (255,), anchor="la")
+
+
 def pill(canvas: Image.Image, y: int, text: str, size: int = 40, alpha: int = 230) -> None:
     """底部字幕胶囊。"""
     d = ImageDraw.Draw(canvas)
@@ -142,13 +201,19 @@ def pill(canvas: Image.Image, y: int, text: str, size: int = 40, alpha: int = 23
     line_h = size + 14
     box_h = line_h * len(lines) + 34
     box_w = max(ImageDraw.Draw(canvas).textlength(l, font=f) for l in lines) + 60
-    x0, y0 = (W - box_w) // 2, y
+    if LAY.get("align") == "left":
+        x0, y0 = LAY.get("pill_x", 80), y
+    else:
+        x0, y0 = (W - box_w) // 2, y
     layer = Image.new("RGBA", (int(box_w), int(box_h)), (0, 0, 0, 0))
     ImageDraw.Draw(layer).rounded_rectangle([0, 0, box_w - 1, box_h - 1], 26, fill=(12, 13, 18, 200),
                                             outline=(168, 85, 247, 90), width=2)
     canvas.alpha_composite(layer, (int(x0), int(y0)))
     for i, line in enumerate(lines):
-        d.text((W // 2, y0 + 17 + i * line_h), line, font=f, fill=(240, 240, 245, alpha), anchor="ma")
+        if LAY.get("align") == "left":
+            d.text((x0 + 30, y0 + 17 + i * line_h), line, font=f, fill=(240, 240, 245, alpha), anchor="la")
+        else:
+            d.text((W // 2, y0 + 17 + i * line_h), line, font=f, fill=(240, 240, 245, alpha), anchor="ma")
 
 
 class Danmaku:
@@ -164,7 +229,7 @@ class Danmaku:
             if t < start:
                 continue
             life = t - start
-            f = font(38)
+            f = font(LAY.get("dm_size", 38))
             tw = d.textlength(text, font=f)
             x = W + 40 - life * 380
             if x + tw < -40:
@@ -294,8 +359,8 @@ def build_audio(timeline: list[dict], total: float, out_path: Path) -> None:
 
 # ---------------------------------------------------------------- 镜头
 
-PANEL_W = 980
-PANEL_C = (540, 985)
+PANEL_W = LAY["panel_w"]
+PANEL_C = LAY["panel_c"]
 SHOT_SCALE = PANEL_W / 1200.0
 _LAST: dict = {"x": 0, "y": 0, "scale": SHOT_SCALE, "dx": 0, "dy": 0}
 
@@ -311,19 +376,24 @@ def map_rect(panel: tuple[int, int, int, int], rect: tuple[int, int, int, int]) 
 
 
 def headline(canvas: Image.Image, title: str, sub: str = "") -> None:
-    """每个镜头顶部的主标题。"""
-    text_center(canvas, 205, title, 62, (255, 255, 255), True)
-    if sub:
-        text_center(canvas, 292, sub, 34, (185, 185, 200), False)
+    """镜头主标题：竖屏居中，横屏靠左。"""
+    if LAY.get("align") == "left":
+        text_left(canvas, LAY["text_x"], LAY["head_y"], title, 64, (255, 255, 255), True)
+        if sub:
+            text_left(canvas, LAY["text_x"], LAY["sub_y"], sub, 34, (185, 185, 200), False)
+    else:
+        text_center(canvas, LAY["head_y"], title, 62, (255, 255, 255), True)
+        if sub:
+            text_center(canvas, LAY["sub_y"], sub, 34, (185, 185, 200), False)
 
 
 def brand(canvas: Image.Image) -> None:
     logo_path = ROOT / "assets" / "logo-128.png"
     if logo_path.exists():
         logo = Image.open(logo_path).convert("RGBA").resize((64, 64), Image.LANCZOS)
-        canvas.alpha_composite(logo, (44, 56))
+        canvas.alpha_composite(logo, (44, LAY["brand_y"]))
     d = ImageDraw.Draw(canvas)
-    d.text((120, 72), "KittyLauncher", font=font(34, True), fill=(235, 235, 245, 210))
+    d.text((120, LAY["brand_y"] + 16), "KittyLauncher", font=font(34, True), fill=(235, 235, 245, 210))
 
 
 def badge(canvas: Image.Image, rect: tuple[int, int, int, int], text: str, color=(52, 211, 153)) -> None:
@@ -348,12 +418,12 @@ def shot_open(canvas, t, dur):
     logo = logo.resize((size, size), Image.LANCZOS)
     a = int(255 * ease)
     logo.putalpha(logo.getchannel("A").point(lambda v: int(v * a / 255)))
-    canvas.alpha_composite(logo, ((W - size) // 2, 560 - size // 2 + int(40 * (1 - ease))))
+    canvas.alpha_composite(logo, ((W - size) // 2, LAY["open_logo_y"] - size // 2 + int(40 * (1 - ease))))
 
     if t > 0.5:
         a2 = int(255 * min(1, (t - 0.5) / 0.5))
-        text_center(canvas, 860, "KittyLauncher", 96, (255, 255, 255), True, a2)
-        text_center(canvas, 980, "macOS 专用的 Minecraft 启动器", 42, (200, 200, 215), False, a2)
+        text_center(canvas, LAY["open_title_y"], "KittyLauncher", 96, (255, 255, 255), True, a2)
+        text_center(canvas, LAY["open_sub_y"], "macOS 专用的 Minecraft 启动器", 42, (200, 200, 215), False, a2)
 
 
 def shot_pain(canvas, t, dur):
@@ -363,15 +433,19 @@ def shot_pain(canvas, t, dur):
         (1.6, "Mac 玩家", "那我呢？", (255, 210, 120)),
         (3.4, "所以写了这个", "", (168, 85, 247)),
     ]
+    active = None
     for start, big, small, color in cards:
-        if t < start:
-            continue
+        if t >= start:
+            active = (start, big, small, color)
+    if active is None:
+        return
+    for start, big, small, color in [active]:
         life = t - start
         a = int(255 * min(1, life / 0.35))
         slide = int(30 * (1 - min(1, life / 0.35)))
-        text_center(canvas, 780 + slide, big, 104, color, True, a)
+        text_center(canvas, LAY["pain_y"] + slide, big, 104, color, True, a)
         if small:
-            text_center(canvas, 920 + slide, small, 52, (210, 210, 220), False, a)
+            text_center(canvas, LAY["pain_sub_y"] + slide, small, 52, (210, 210, 220), False, a)
 
 
 def shot_launch(canvas, t, dur):
@@ -471,10 +545,11 @@ def shot_skin(canvas, t, dur):
     glow = glow.filter(ImageFilter.GaussianBlur(90))
     canvas.alpha_composite(glow, (60, 480))
     d = ImageDraw.Draw(canvas)
-    d.rounded_rectangle([110, 500, W - 110, 1290], 34, outline=(168, 85, 247, 70), width=2)
+    fr = LAY["skin_frame"]
+    d.rounded_rectangle(fr, 34, outline=(168, 85, 247, 70), width=2)
 
-    canvas.alpha_composite(f, ((W - f.width) // 2, 520))
-    text_center(canvas, 1330, "拖拽旋转 · 滚轮缩放 · 自动转圈", 36, (200, 200, 215), False)
+    canvas.alpha_composite(f, ((fr[0] + fr[2] - f.width) // 2, LAY["skin_img_y"]))
+    text_center(canvas, LAY["skin_tip_y"], "拖拽旋转 · 滚轮缩放 · 自动转圈", 36, (200, 200, 215), False)
 
 
 def shot_diag(canvas, t, dur):
@@ -498,11 +573,11 @@ def shot_mirror(canvas, t, dur):
 
 def shot_end(canvas, t, dur):
     logo = Image.open(ROOT / "assets" / "logo.png").convert("RGBA").resize((260, 260), Image.LANCZOS)
-    canvas.alpha_composite(logo, ((W - 260) // 2, 520))
-    text_center(canvas, 830, "KittyLauncher", 82, (255, 255, 255), True)
-    text_center(canvas, 930, "macOS 专用的 Minecraft 启动器", 40, (205, 205, 220), False)
-    text_center(canvas, 1050, "github.com/guofuxiuer-max/kitty-launcher", 34, (168, 85, 247), True)
-    text_center(canvas, 1110, "MIT · 免费开源 · 星标就是动力", 32, (160, 160, 175), False)
+    canvas.alpha_composite(logo, ((W - 260) // 2, LAY["end_logo_y"]))
+    text_center(canvas, LAY["end_title_y"], "KittyLauncher", 82, (255, 255, 255), True)
+    text_center(canvas, LAY["end_sub_y"], "macOS 专用的 Minecraft 启动器", 40, (205, 205, 220), False)
+    text_center(canvas, LAY["end_url_y"], "github.com/guofuxiuer-max/kitty-launcher", 34, (168, 85, 247), True)
+    text_center(canvas, LAY["end_mit_y"], "MIT · 免费开源 · 星标就是动力", 32, (160, 160, 175), False)
 
 
 # ---------------------------------------------------------------- 时间线
@@ -543,12 +618,35 @@ DANMAKU = [
 
 
 def main() -> int:
+    global W, H, LAY, PANEL_W, PANEL_C, SHOT_SCALE
     stills = "--stills" in sys.argv
+    horizontal = "--horizontal" in sys.argv
+    if horizontal:
+        W, H = 1920, 1080
+        LAY = dict(HORIZONTAL_LAY)
+        PANEL_W = LAY["panel_w"]
+        PANEL_C = LAY["panel_c"]
+        SHOT_SCALE = PANEL_W / 1200.0
     TMP.mkdir(parents=True, exist_ok=True)
 
-    # 时间线
+    # 时间线：用真实配音时长排（配音换了，节奏跟着走）
+    import wave as _wave
+
+    def vo_len(i: int) -> float:
+        f = TMP / "wav" / f"{i}.wav"
+        if not f.exists():
+            return 0.0
+        try:
+            with _wave.open(str(f)) as w:
+                return w.getnframes() / w.getframerate()
+        except Exception:
+            return 0.0
+
     timeline, t0 = [], 0.0
-    for key, vo, dur, head, sub2, sub in SHOTS:
+    for key, vo, dur_hint, head, sub2, sub in SHOTS:
+        n = vo_len(vo)
+        gap = 1.55 if key == "end" else (1.2 if key in ("open", "pain") else 0.85)
+        dur = max(3.0, n + gap) if n else dur_hint
         timeline.append({"key": key, "vo": vo, "dur": dur, "head": head, "sub2": sub2,
                          "sub": sub, "start": t0})
         t0 += dur
@@ -571,9 +669,9 @@ def main() -> int:
         DRAW[seg["key"]](canvas, local, seg["dur"])
 
         # 画中画底部字幕
-        pill(canvas, 1450, seg["sub"], 40)
+        pill(canvas, LAY["pill_y"], seg["sub"], 40)
 
-        dm.draw(canvas, t, top=378, lane_h=68)
+        dm.draw(canvas, t, top=LAY["dm_top"], lane_h=LAY["dm_lane"])
         brand(canvas)
 
         # 镜头切换时 0.22s 的黑场过渡
@@ -583,7 +681,7 @@ def main() -> int:
         return canvas.convert("RGB")
 
     if stills:
-        out = TMP / "stills"
+        out = TMP / ("stills-h" if horizontal else "stills")
         out.mkdir(exist_ok=True)
         for s in timeline:
             img = frame_at(s["start"] + s["dur"] * 0.62)
@@ -599,7 +697,7 @@ def main() -> int:
     import imageio_ffmpeg
 
     ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
-    out_path = ROOT / "docs" / "KittyLauncher-promo.mp4"
+    out_path = ROOT / "docs" / ("KittyLauncher-promo-16x9.mp4" if horizontal else "KittyLauncher-promo.mp4")
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     cmd = [
